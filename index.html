@@ -225,6 +225,45 @@ body{background:linear-gradient(180deg,#f5f2fa 0,#fbfafc 360px);color:var(--ink)
  .vform label{width:100%}
 }
 
+
+/* Correção pontual: contraste da jornada e formulário contido no card */
+section h2{color:#34313e!important}
+.sum,#wk,#goal{color:#34313e!important;font-weight:650}
+#goal{color:#5c5668!important}
+#today .empty{color:#625e6a}
+#visits-section details#vdet{width:100%;max-width:100%;min-width:0;overflow:hidden}
+#vdet .vform{
+ display:grid!important;
+ grid-template-columns:minmax(0,1fr)!important;
+ gap:12px;
+ width:100%;
+ max-width:100%;
+ min-width:0;
+ align-items:stretch;
+}
+#vdet .vform>*{min-width:0;max-width:100%}
+#vdet .vform label{
+ display:flex;
+ width:100%;
+ min-width:0;
+ max-width:100%;
+ flex:initial;
+}
+#vdet .vform input,
+#vdet .vform input[type=text],
+#vdet .vform input[type=date],
+#vdet .vform input[type=time],
+#vdet .vform input[type=file]{
+ display:block;
+ box-sizing:border-box!important;
+ width:100%!important;
+ min-width:0!important;
+ max-width:100%!important;
+}
+#vdet .vform input[type=file]{overflow:hidden;padding:9px}
+#vdet .vform button{justify-self:start;max-width:100%}
+#vdet .msg{overflow-wrap:anywhere}
+
 </style>
 </head>
 <body>
