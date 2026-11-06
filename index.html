@@ -161,6 +161,70 @@ body{background:linear-gradient(180deg,#f0eff8 0,#f8f8fa 340px);color:var(--ink)
 .quick-icon{background:#fff0ed!important;color:#d83225!important}
 .quick-arrow{color:#242365!important}
 
+
+/* Refinamento visual: tons claros, contraste e campos alinhados */
+:root{
+ color-scheme:light;
+ --bg:#faf9fc;
+ --sf:#ffffff;
+ --ink:#35333d;
+ --mu:#706d79;
+ --ac:#e94b35;
+ --on:#ffffff;
+ --ln:#e7e3eb;
+ --neg:#c83e32;
+ --pos:#6258a8
+}
+body{background:linear-gradient(180deg,#f5f2fa 0,#fbfafc 360px);color:var(--ink)}
+.hero{
+ background:linear-gradient(125deg,#eeedff 0%,#f6f2ff 58%,#fff0e9 100%);
+ color:#35333d;
+ border:1px solid #e7e1f2;
+ box-shadow:0 10px 28px rgba(67,55,105,.08)
+}
+.hero .date,.hero .status{color:#6e6979}
+.hero .status b{color:#35333d}
+.hero .clock{color:#302e3b}
+.hero .punch{background:#e94b35;color:#fff;border:0;box-shadow:0 5px 14px rgba(233,75,53,.18)}
+.hero .punch.out{background:#fff;color:#b94332;border:1px solid #f0c9c1}
+.quick-link{
+ background:#fff!important;
+ color:#34313e!important;
+ border-color:#e4dfeb!important;
+ box-shadow:0 4px 14px rgba(55,45,80,.055)
+}
+.quick-copy strong{color:#34313e!important;font-weight:800}
+.quick-copy small{color:#666271!important;font-weight:550}
+.quick-icon{background:#fff0eb!important;color:#d94330!important}
+.quick-arrow{color:#d94330!important}
+#history-section>h2,#visits-section>h2{color:#34313e}
+#history-section .mes{color:#666271}
+#history-section .mes b{color:#34313e}
+#hist.card{background:#fff;border-color:#e6e1eb;box-shadow:0 5px 18px rgba(55,45,80,.04)}
+#hist .row{border-color:#eeeaf1}
+#hist .d,#hist .h{color:#34313e}
+#hist .p{color:#666271}
+.share{
+ background:#fff7f3!important;
+ border:1px solid #f0d9d1!important;
+ color:#34313e;
+ box-shadow:0 5px 18px rgba(120,65,50,.045)
+}
+.share h2{color:#34313e}
+.share .mes,.share .note{color:#625e68}
+.share .btn{background:#fff;color:#514b5b;border-color:#ddd5df}
+.share .btn.fill{background:#e94b35;border-color:#e94b35;color:#fff}
+.vform{align-items:stretch}
+.vform label{width:100%;min-width:0;flex:1 1 100%;color:#625e6a}
+.vform input:not([type=file]){display:block;width:100%;min-width:0;max-width:100%;height:44px}
+.vform input[type=file]{display:block;width:100%;max-width:100%;min-width:0;padding:9px;background:#fff}
+.vform .w{flex:1 1 100%;width:100%;min-width:0}
+.vform button{align-self:flex-start}
+@media(max-width:520px){
+ .hero{background:linear-gradient(145deg,#eeedff 0%,#fff2ed 100%)}
+ .vform label{width:100%}
+}
+
 </style>
 </head>
 <body>
