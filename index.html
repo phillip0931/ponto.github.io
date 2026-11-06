@@ -87,6 +87,14 @@ input{font:inherit;color:var(--ink);background:var(--sf);border:1px solid var(--
 </form><p id="authmsg" role="status"></p>
 </section>
 <main id="main"><div class="account"><span id="accountemail"></span><button class="x" id="logout" type="button">Sair</button></div>
+  <details id="profile">
+    <summary>Meu cadastro</summary>
+    <div class="form">
+      <label class="w">Nome do vendedor<input id="profile-name" type="text" maxlength="80" autocomplete="name" placeholder="Digite seu nome"></label>
+      <button class="btn fill" id="profile-save" type="button">Salvar nome</button>
+    </div>
+    <p class="note" id="profile-msg" role="status"></p>
+  </details>
   <p class="date" id="date"></p>
   <p class="clock" id="clock">00:00:00</p>
   <p class="status" id="status"></p>
@@ -421,7 +429,10 @@ setTimeout(()=>{lib('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.um
 $('fd').value=dkey(Date.now());
 async function activate(session){
  currentUser=session.user;cloudReady=false;
- $('accountemail').textContent=currentUser.email||'Conta conectada';
+ const savedName=currentUser.user_metadata&&currentUser.user_metadata.full_name?currentUser.user_metadata.full_name:'';
+ $('profile-name').value=savedName;
+ $('profile-msg').textContent='';
+ $('accountemail').textContent=(savedName?savedName+' · ':'')+(currentUser.email||'Conta conectada');
  $('authmsg').textContent='Carregando seus registros…';
  try{
   await loadCloudData();
@@ -451,6 +462,21 @@ $('loginform').addEventListener('submit',async e=>{
   $('authmsg').textContent='Não foi possível concluir o login. Verifique a conexão e tente novamente.';
  }finally{btn.disabled=false}
 });
+$('profile-save').onclick=async()=>{
+ const btn=$('profile-save'),name=$('profile-name').value.trim();
+ if(!name){$('profile-msg').textContent='Digite seu nome antes de salvar.';return}
+ btn.disabled=true;$('profile-msg').textContent='Salvando…';
+ try{
+  const {data,error}=await sb.auth.updateUser({data:{full_name:name}});
+  if(error)throw error;
+  currentUser=data.user;
+  $('accountemail').textContent=name+' · '+(currentUser.email||'Conta conectada');
+  $('profile-msg').textContent='Nome salvo com sucesso.';
+ }catch(error){
+  console.error('Falha ao salvar cadastro:',error);
+  $('profile-msg').textContent='Não foi possível salvar. Tente novamente.';
+ }finally{btn.disabled=false}
+};
 $('logout').onclick=async()=>{const {error}=await sb.auth.signOut();if(error){$('authmsg').textContent='Não foi possível sair da conta.';return}deactivate()};
 (async()=>{const {data,error}=await sb.auth.getSession();if(error){$('authmsg').textContent='Falha ao verificar a sessão.';return}
  if(data.session)await activate(data.session);else deactivate();
