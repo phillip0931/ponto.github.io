@@ -264,6 +264,63 @@ section h2{color:#34313e!important}
 #vdet .vform button{justify-self:start;max-width:100%}
 #vdet .msg{overflow-wrap:anywhere}
 
+
+/* Ajuste responsivo final: destaque do Hoje e limites de largura */
+section:first-of-type > h2{
+ color:#302e87!important;
+ font-weight:800;
+ letter-spacing:.015em;
+}
+#today{width:100%;max-width:100%;min-width:0;overflow:hidden}
+#today .row{min-width:0;max-width:100%;flex-wrap:wrap}
+#today .row .l{min-width:0;overflow-wrap:anywhere}
+#today .row .x{flex:0 0 auto}
+.sum{width:100%;min-width:0;max-width:100%;flex-wrap:wrap}
+#wk{color:#ee3c24!important;font-weight:800}
+#goal{color:#625e6a!important}
+html,body{max-width:100%;overflow-x:hidden}
+main,#main,section,.card,details,.share,.account,.hero{min-width:0;max-width:100%}
+main{width:100%}
+img, input,button,select,textarea{max-width:100%}
+input,button{box-sizing:border-box}
+.form{min-width:0;max-width:100%}
+.form label{min-width:0;max-width:100%}
+.form input{width:100%;min-width:0;max-width:100%}
+#vdet{width:100%;max-width:100%;min-width:0;overflow:hidden}
+#vdet .vform{
+ display:grid!important;
+ grid-template-columns:minmax(0,1fr)!important;
+ width:100%!important;
+ max-width:100%!important;
+ min-width:0!important;
+ gap:12px;
+}
+#vdet .vform>*,
+#vdet .vform label,
+#vdet .vform input,
+#vdet .vform button{
+ min-width:0!important;
+ max-width:100%!important;
+}
+#vdet .vform label{width:100%!important}
+#vdet .vform input{width:100%!important}
+#vdet .vform input[type=file]{
+ width:100%!important;
+ overflow:hidden;
+ white-space:normal;
+}
+#vdet .vmsg,#vmsg{max-width:100%;overflow-wrap:anywhere}
+@media(max-width:520px){
+ main{padding-left:12px;padding-right:12px}
+ .hero,.card,.share,#vdet{border-radius:14px}
+ .sum{align-items:flex-start;gap:5px 12px}
+ #today .row{gap:8px}
+ #today .row .l{flex:1 1 110px}
+ #today .row .x{margin-left:auto}
+ #vdet .vform{grid-template-columns:minmax(0,1fr)!important}
+ #vdet .vform input[type=file]{font-size:.82rem;padding:8px}
+}
+
 </style>
 </head>
 <body>
