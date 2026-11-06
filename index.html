@@ -186,7 +186,7 @@ const save=()=>{
    const {error}=await sb.from('visits').delete().eq('user_id',uid).eq('id',oldId);if(error)throw error;
   }
   const {error}=await sb.from('user_settings').upsert({user_id:uid,daily_goal:S.meta},{onConflict:'user_id'});if(error)throw error;
-  cloudSnapshot={punches:currentPunches,visits:new Map([...currentVisits].map(([id,v])=>[id,id,v.photo_path||null]))};
+  cloudSnapshot={punches:currentPunches,visits:new Map([...currentVisits].map(([id,v])=>[id,v.photo_path||null]))};
  }).catch(error=>{
   console.error('Falha ao sincronizar:',error);
   const note=$('snote');if(note)note.textContent='Não foi possível sincronizar. Verifique sua conexão e tente novamente.';
