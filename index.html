@@ -136,6 +136,21 @@ body{background:linear-gradient(180deg,#f0eff8 0,#f8f8fa 340px);color:var(--ink)
 .hero{background:linear-gradient(125deg,#302e87 0%,#242365 72%,#ee3c24 145%)}
 .hero .punch{background:#ee3c24;color:#fff;border:1px solid rgba(255,255,255,.24)}.hero .punch.out{background:#fff;color:#302e87}
 .bar i{background:linear-gradient(90deg,#302e87,#ee3c24)}.btn.fill{background:#ee3c24;border-color:#ee3c24;color:#fff}#auth button.btn.fill{background:#ee3c24;border-color:#ee3c24}:focus-visible{outline-color:#ee3c24}
+
+/* Navegação rápida: contraste explícito e acessibilidade */
+.quick-access{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:0 0 20px}
+.quick-link{display:flex;align-items:center;gap:10px;min-width:0;padding:14px 13px;background:#fff;border:1px solid #e4e3ed;border-radius:15px;text-decoration:none;color:#302e87;box-shadow:0 5px 16px rgba(48,46,135,.06);transition:transform .15s ease,box-shadow .15s ease}
+.quick-link:hover{transform:translateY(-2px);box-shadow:0 9px 22px rgba(48,46,135,.11)}
+.quick-icon{display:grid;place-items:center;flex:0 0 34px;width:34px;height:34px;border-radius:10px;background:#fff0ed;color:#ee3c24;font-size:1.25rem;font-weight:800}
+.quick-copy{display:grid;gap:3px;min-width:0}
+.quick-copy strong{display:block;color:#302e87;font-size:.86rem;line-height:1.2;font-weight:750}
+.quick-copy small{display:block;color:#686783;font-size:.72rem;line-height:1.25}
+.quick-arrow{margin-left:auto;color:#302e87;font-size:1.35rem;font-weight:700}
+.quick-link:focus-visible{outline:3px solid #ee3c24;outline-offset:3px}
+#history-section,#share,#vdet{scroll-margin-top:18px}
+@media(max-width:600px){.quick-access{grid-template-columns:1fr;gap:8px;margin-bottom:16px}.quick-link{padding:11px 13px}.quick-copy strong{font-size:.88rem}.quick-copy small{font-size:.74rem}}
+@media(prefers-reduced-motion:reduce){.quick-link{transition:none}.quick-link:hover{transform:none}}
+
 </style>
 </head>
 <body>
@@ -157,6 +172,23 @@ body{background:linear-gradient(180deg,#f0eff8 0,#f8f8fa 340px);color:var(--ink)
     </div>
     <div class="account-user"><span id="accountemail"></span><button class="x" id="logout" type="button">Sair</button></div>
   </div>
+  <nav class="quick-access" aria-label="Acesso rápido">
+    <a class="quick-link" href="#vdet" onclick="document.getElementById('vdet').open=true">
+      <span class="quick-icon" aria-hidden="true">＋</span>
+      <span class="quick-copy"><strong>Registrar visita</strong><small>Nova visita a cliente</small></span>
+      <span class="quick-arrow" aria-hidden="true">›</span>
+    </a>
+    <a class="quick-link" href="#history-section">
+      <span class="quick-icon" aria-hidden="true">↺</span>
+      <span class="quick-copy"><strong>Histórico</strong><small>Consultar registros</small></span>
+      <span class="quick-arrow" aria-hidden="true">›</span>
+    </a>
+    <a class="quick-link" href="#share">
+      <span class="quick-icon" aria-hidden="true">▤</span>
+      <span class="quick-copy"><strong>Relatórios</strong><small>PDF e planilha</small></span>
+      <span class="quick-arrow" aria-hidden="true">›</span>
+    </a>
+  </nav>
   <div class="hero">
     <p class="date" id="date"></p>
     <p class="clock" id="clock">00:00:00</p>
@@ -180,7 +212,7 @@ body{background:linear-gradient(180deg,#f0eff8 0,#f8f8fa 340px);color:var(--ink)
     </details>
   </section>
 
-  <section>
+  <section id="visits-section">
     <h2>Visitas</h2>
     <div id="vopen"></div>
     <details id="vdet">
@@ -200,7 +232,7 @@ body{background:linear-gradient(180deg,#f0eff8 0,#f8f8fa 340px);color:var(--ink)
     <div class="card" id="vlist" style="margin-top:14px"></div>
   </section>
 
-  <section>
+  <section id="history-section">
     <h2>Histórico</h2>
     <p class="mes" id="mes"></p>
     <div class="card hist" id="hist"></div>
