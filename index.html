@@ -641,11 +641,18 @@ $('vadd').onclick=async()=>{
 const DL={async save({filename,data}){
   const type=filename.endsWith('.pdf')?'application/pdf':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
   const blob=new Blob([data],{type});
-  try{const file=new File([blob],filename,{type});
-    if(navigator.canShare&&navigator.canShare({files:[file]})){await navigator.share({files:[file],title:filename});return}}
-  catch(e){if(e&&e.name==='AbortError')throw{code:'declined'}}
+  const mobile=/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent)||
+    (window.matchMedia&&window.matchMedia('(max-width: 767px) and (pointer: coarse)').matches);
+  if(mobile){
+    try{const file=new File([blob],filename,{type});
+      if(navigator.canShare&&navigator.canShare({files:[file]})){
+        await navigator.share({files:[file],title:filename});return 'shared';
+      }}
+    catch(e){if(e&&e.name==='AbortError')throw{code:'declined'}}
+  }
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=filename;document.body.appendChild(a);a.click();a.remove();
   setTimeout(()=>URL.revokeObjectURL(a.href),4000);
+  return 'downloaded';
 }};
 $('share').hidden=false;
 const lib=(src,ok)=>new Promise((res,rej)=>{if(ok())return res();const s=document.createElement('script');s.src=src;s.onload=()=>ok()?res():rej(new Error('lib'));s.onerror=()=>rej(new Error('lib'));document.head.appendChild(s)});
@@ -725,8 +732,8 @@ async function go(kind){
   try{
     await saveChain;await loadCloudData();render();renderV();
     const data=await(kind==='pdf'?pdf():xls());
-    await DL.save({filename:'ponto-'+dkey(Date.now())+'.'+(kind==='pdf'?'pdf':'xlsx'),data});
-    note.textContent='Arquivo salvo.';
+    const result=await DL.save({filename:'ponto-'+dkey(Date.now())+'.'+(kind==='pdf'?'pdf':'xlsx'),data});
+    note.textContent=result==='shared'?'Arquivo enviado para compartilhamento.':'Download iniciado.';
   }catch(e){
     const c=e&&e.code;
     note.textContent=c==='declined'?'Download cancelado.':c?'Não foi possível salvar o arquivo aqui.':'Não foi possível gerar o arquivo. Verifique a conexão e tente de novo.';
