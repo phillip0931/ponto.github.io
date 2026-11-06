@@ -343,7 +343,7 @@ async function xls(){
   const body=R.map(r=>[r.date.toLocaleDateString('pt-BR'),wd(r.date),...Array.from({length:n},(_,i)=>r.l[i]!==undefined?hm(r.l[i]):''),+(r.w/H).toFixed(2),r.df===null?'':+(r.df/H).toFixed(2),r.open?'Saída faltando':'']);
   const ws=XLSX.utils.aoa_to_sheet([head,...body]);
   ws['!cols']=head.map(h=>({wch:Math.max(10,h.length+2)}));
-  const rs=XLSX.utils.aoa_to_sheet([['E-mail do vendedor',currentUser?.email||'Não informado'],['Dias com registro',R.length],['Total trabalhado (h)',+(T.tot/H).toFixed(2)],['Jornada diária (h)',S.meta],['Saldo (h)',+(T.sal/H).toFixed(2)],['Gerado em',new Date().toLocaleString('pt-BR')]]);
+  const rs=XLSX.utils.aoa_to_sheet([['E-mail do vendedor',(currentUser&&currentUser.email?currentUser.email:'Não informado')],['Dias com registro',R.length],['Total trabalhado (h)',+(T.tot/H).toFixed(2)],['Jornada diária (h)',S.meta],['Saldo (h)',+(T.sal/H).toFixed(2)],['Gerado em',new Date().toLocaleString('pt-BR')]]);
   rs['!cols']=[{wch:24},{wch:20}];
   const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Registros');XLSX.utils.book_append_sheet(wb,rs,'Resumo');
   if(S.visits.length){const V=[...S.visits].sort((a,b)=>a.ini-b.ini);
