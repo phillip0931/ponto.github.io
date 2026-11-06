@@ -75,10 +75,66 @@ input{font:inherit;color:var(--ink);background:var(--sf);border:1px solid var(--
 #auth button{width:100%;padding:12px}#authmsg{min-height:1.4em;color:var(--neg);font-size:.92rem;margin:10px 0 0}
 .account{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:0 0 18px;color:var(--mu);font-size:.9rem}
 .account button{font-size:.85rem}main{display:none}
+
+/* Identidade visual Resgatécnica — camada visual, sem alterar a lógica do app */
+:root{--bg:#f3f6fa;--sf:#ffffff;--ink:#172b46;--mu:#65758b;--ac:#087e78;--on:#ffffff;--ln:#e0e7ef;--neg:#b44a36;--pos:#087e78}
+body{background:linear-gradient(180deg,#eaf0f6 0,#f5f7fa 320px);color:var(--ink)}
+main{max-width:760px;padding:24px 22px 64px}
+.account{display:flex;align-items:center;justify-content:space-between;gap:16px;margin:0 0 22px;padding:14px 16px;background:rgba(255,255,255,.92);border:1px solid var(--ln);border-radius:16px;box-shadow:0 8px 24px rgba(20,39,64,.06)}
+.account-user{display:flex;align-items:center;gap:12px;min-width:0}
+.account-user #accountemail{max-width:230px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.84rem}
+.brand{display:flex;align-items:center;gap:11px;min-width:0}
+.brand-mark{display:grid;place-items:center;width:42px;height:42px;flex:0 0 42px;border-radius:12px;background:linear-gradient(145deg,#142b49,#087e78);color:#fff;font-size:1.25rem;font-weight:800;letter-spacing:-.06em;box-shadow:0 5px 12px rgba(20,43,73,.18)}
+.brand-copy{display:grid;gap:2px;line-height:1.15}
+.brand-copy strong{font-size:.92rem;letter-spacing:.055em;color:#172b46}
+.brand-copy small{font-size:.62rem;font-weight:700;letter-spacing:.11em;color:#718198}
+.hero{padding:26px 28px 24px;border-radius:22px;background:linear-gradient(135deg,#142b49 0%,#1d4260 65%,#087e78 130%);color:#fff;box-shadow:0 14px 32px rgba(20,43,73,.16)}
+.hero .date,.hero .status{color:rgba(255,255,255,.76)}
+.hero .status b{color:#fff}
+.hero .clock{margin:8px 0 7px;font-size:clamp(3.5rem,15vw,5.2rem);letter-spacing:-.045em}
+.hero .punch{margin-top:20px;background:#fff;color:#173653;border-radius:13px;box-shadow:0 5px 14px rgba(0,0,0,.12)}
+.hero .punch.out{background:#e8f3f2;color:#145b58}
+section{margin-top:26px}
+section h2{display:flex;align-items:center;gap:9px;margin-bottom:12px;font-size:1.08rem;letter-spacing:-.015em}
+.card{border:1px solid #e2e8ef;border-radius:16px;padding:7px 18px;box-shadow:0 5px 18px rgba(20,39,64,.035)}
+.row{padding:13px 0}
+.sum{margin:14px 2px 8px;font-size:.9rem}
+.bar{height:9px;background:#e3eaf0}
+.bar i{border-radius:99px;background:linear-gradient(90deg,#087e78,#35aaa0)}
+.btn{border-color:#d2dce7;border-radius:11px;padding:10px 15px;background:#fff}
+.btn.fill{background:#172f4c;border-color:#172f4c;color:#fff}
+.punch{font-size:1.12rem;padding:20px 16px}
+details{padding:12px 14px;border:1px solid var(--ln);border-radius:13px;background:#fbfcfe}
+summary{font-weight:600}
+input{border-color:#d5dee8;border-radius:10px}
+#auth{max-width:440px;margin:10vh auto;padding:30px 26px;background:#fff;border:1px solid #e0e7ef;border-radius:22px;box-shadow:0 18px 48px rgba(20,39,64,.10)}
+#auth .brand{margin-bottom:28px}
+#auth h1{font-size:1.55rem;letter-spacing:-.035em;color:#172b46}
+#auth p{line-height:1.55}
+#auth button{border-radius:12px}
+.share{padding:16px;border:1px solid var(--ln);border-radius:16px;background:#fff}
+@media(max-width:520px){
+ main{padding:14px 13px 44px}
+ .account{padding:11px 12px;gap:8px}
+ .brand{gap:8px}
+ .brand-mark{width:36px;height:36px;flex-basis:36px;border-radius:10px}
+ .brand-copy strong{font-size:.78rem}
+ .brand-copy small{font-size:.53rem;letter-spacing:.08em}
+ .account-user{gap:7px}
+ .account-user #accountemail{max-width:104px;font-size:.72rem}
+ .account-user button{padding:6px 8px;font-size:.78rem}
+ .hero{padding:23px 19px 20px;border-radius:18px}
+ .hero .clock{font-size:clamp(3.25rem,17vw,4.6rem)}
+ .card{padding-left:13px;padding-right:13px}
+}
 </style>
 </head>
 <body>
 <section id="auth">
+<div class="brand" aria-label="Resgatécnica">
+  <div class="brand-mark">R</div>
+  <div class="brand-copy"><strong>RESGATÉCNICA</strong><small>PONTO E VISITAS</small></div>
+</div>
 <h1>Acesso ao Ponto</h1><p>Entre com seu e-mail e senha para acessar seus registros.</p>
 <form id="loginform">
 <label>E-mail<input id="loginemail" type="email" autocomplete="username" required></label>
@@ -86,11 +142,20 @@ input{font:inherit;color:var(--ink);background:var(--sf);border:1px solid var(--
 <button class="btn fill" id="loginbtn" type="submit">Entrar</button>
 </form><p id="authmsg" role="status"></p>
 </section>
-<main id="main"><div class="account"><span id="accountemail"></span><button class="x" id="logout" type="button">Sair</button></div>
-  <p class="date" id="date"></p>
-  <p class="clock" id="clock">00:00:00</p>
-  <p class="status" id="status"></p>
-  <button class="punch" id="punch" type="button"></button>
+<main id="main">
+  <div class="account">
+    <div class="brand" aria-label="Resgatécnica">
+      <div class="brand-mark">R</div>
+      <div class="brand-copy"><strong>RESGATÉCNICA</strong><small>PONTO E VISITAS</small></div>
+    </div>
+    <div class="account-user"><span id="accountemail"></span><button class="x" id="logout" type="button">Sair</button></div>
+  </div>
+  <div class="hero">
+    <p class="date" id="date"></p>
+    <p class="clock" id="clock">00:00:00</p>
+    <p class="status" id="status"></p>
+    <button class="punch" id="punch" type="button"></button>
+  </div>
 
   <section>
     <h2>Hoje</h2>
