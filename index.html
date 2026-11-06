@@ -457,10 +457,6 @@ button:active,.btn:active,.quick-link:active{transform:scale(.985)}
       </div>
       <p class="note" id="snote" role="status"></p>
     </div>
-    <div class="meta">
-      <label for="meta" style="flex-direction:row;align-items:center;gap:10px">Jornada diária, em horas</label>
-      <input type="number" id="meta" min="1" max="24" step="0.5">
-    </div>
   </section>
 </main>
 
@@ -472,7 +468,7 @@ const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 let currentUser=null,cloudReady=false,saveChain=Promise.resolve();
 let cloudSnapshot={punches:new Set(),visits:new Map()};
 const K='ponto:v1';
-let S={punches:[],meta:8,visits:[]};
+let S={punches:[],visits:[]};
 const save=()=>{
  if(!cloudReady||!currentUser)return;
  const uid=currentUser.id;
@@ -493,7 +489,6 @@ const save=()=>{
    if(oldPath){const {error:e}=await sb.storage.from('visit-photos').remove([oldPath]);if(e)throw e}
    const {error}=await sb.from('visits').delete().eq('user_id',uid).eq('id',oldId);if(error)throw error;
   }
-  const {error}=await sb.from('user_settings').upsert({user_id:uid,daily_goal:S.meta},{onConflict:'user_id'});if(error)throw error;
   cloudSnapshot={punches:currentPunches,visits:new Map([...currentVisits].map(([id,v])=>[id,v.photo_path||null]))};
  }).catch(error=>{
   console.error('Falha ao sincronizar:',error);
@@ -504,15 +499,13 @@ const save=()=>{
 };
 async function loadCloudData(){
  const uid=currentUser.id;
- const [p,v,g]=await Promise.all([
+ const [p,v]=await Promise.all([
   sb.from('punches').select('punched_at').eq('user_id',uid).order('punched_at'),
-  sb.from('visits').select('id,client,reason,notes,started_at,ended_at,photo_path').eq('user_id',uid).order('started_at',{ascending:false}),
-  sb.from('user_settings').select('daily_goal').eq('user_id',uid).maybeSingle()
+  sb.from('visits').select('id,client,reason,notes,started_at,ended_at,photo_path').eq('user_id',uid).order('started_at',{ascending:false})
  ]);
- if(p.error)throw p.error;if(v.error)throw v.error;if(g.error)throw g.error;
+ if(p.error)throw p.error;if(v.error)throw v.error;
  S.punches=(p.data||[]).map(x=>Date.parse(x.punched_at)).filter(Number.isFinite);
  S.visits=(v.data||[]).map(x=>({id:x.id,c:x.client,m:x.reason||'',o:x.notes||'',ini:Date.parse(x.started_at),fim:x.ended_at?Date.parse(x.ended_at):null,foto:!!x.photo_path,photo_path:x.photo_path||null})).filter(x=>Number.isFinite(x.ini));
- S.meta=g.data?.daily_goal>0?Number(g.data.daily_goal):8;
  cloudSnapshot={punches:new Set((p.data||[]).map(x=>new Date(x.punched_at).toISOString())),visits:new Map((v.data||[]).map(x=>[x.id,x.photo_path||null]))};
 }
 const $=id=>document.getElementById(id);
@@ -539,24 +532,26 @@ function render(){
   tick();
   // histórico
   const now=new Date(),ym=now.getFullYear()+'-'+pad(now.getMonth()+1);
-  let tot=0,saldo=0,n=0;
+  let tot=0,n=0;
   const keys=Object.keys(days).sort().reverse();
-  keys.forEach(k=>{if(k.startsWith(ym)){const w=worked(days[k],k===today);tot+=w;n++;if(k!==today)saldo+=w-S.meta*H}});
+  keys.forEach(k=>{if(k.startsWith(ym)){tot+=worked(days[k],k===today);n++}});
   const mn=now.toLocaleDateString('pt-BR',{month:'long',year:'numeric'});
-  $('mes').innerHTML=n?'Em '+mn+': <b class="num">'+dur(tot)+'</b> trabalhadas em '+n+(n===1?' dia':' dias')+'. Saldo dos dias anteriores: <b class="num '+(saldo<0?'neg':'pos')+'">'+sd(saldo)+'</b>.':'Sem registros em '+mn+'.';
+  $('mes').innerHTML=n?'Em '+mn+': <b class="num">'+dur(tot)+'</b> trabalhadas em '+n+(n===1?' dia':' dias')+'.':'Sem registros em '+mn+'.';
   const hist=keys.filter(k=>k!==today).slice(0,31);
-  $('hist').innerHTML=hist.length?hist.map(k=>{const l=days[k],w=worked(l,false),inc=l.length%2===1,df=w-S.meta*H;const d=new Date(l[0]).toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'2-digit'});
-    return '<div class="row"><span class="d">'+d+'</span><span class="p num">'+pairs(l)+'</span><span class="h num">'+dur(w)+'</span>'+(inc?'<span class="neg">saída faltando</span>':'<span class="num '+(df<0?'neg':'pos')+'">'+sd(df)+'</span>')+'</div>'}).join(''):'<p class="empty">Os dias anteriores aparecem aqui.</p>';
-  $('meta').value=S.meta;
+  $('hist').innerHTML=hist.length?hist.map(k=>{const l=days[k],w=worked(l,false),inc=l.length%2===1;const d=new Date(l[0]).toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'2-digit'});
+    return '<div class="row"><span class="d">'+d+'</span><span class="p num">'+pairs(l)+'</span><span class="h num">'+dur(w)+'</span>'+(inc?'<span class="neg">saída faltando</span>':'')+'</div>'}).join(''):'<p class="empty">Os dias anteriores aparecem aqui.</p>';
 }
 function tick(){
-  const n=new Date();
+  const n=new Date(),days=byDay(),today=dkey(n.getTime());
   $('clock').textContent=pad(n.getHours())+':'+pad(n.getMinutes())+':'+pad(n.getSeconds());
   $('date').textContent=n.toLocaleDateString('pt-BR',{weekday:'long',day:'numeric',month:'long'});
-  const l=byDay()[dkey(Date.now())]||[],w=worked(l,true);
-  $('wk').textContent='Trabalhado hoje: '+dur(w);
-  $('goal').textContent='Jornada: '+S.meta+'h';
-  $('fill').style.width=Math.min(100,w/(S.meta*H)*100)+'%';
+  const monday=new Date(n.getFullYear(),n.getMonth(),n.getDate());
+  monday.setDate(monday.getDate()-((monday.getDay()+6)%7));
+  const start=dkey(monday.getTime());
+  const weekly=Object.keys(days).filter(k=>k>=start&&k<=today).reduce((sum,k)=>sum+worked(days[k],k===today),0);
+  $('wk').textContent='Trabalhado na semana: '+dur(weekly);
+  $('goal').textContent='Meta semanal: 44h';
+  $('fill').style.width=Math.min(100,weekly/(44*H)*100)+'%';
 }
 $('punch').onclick=()=>{S.punches.push(Date.now());save();render()};
 $('today').onclick=e=>{const t=e.target.closest('[data-t]');if(!t)return;const v=Number(t.dataset.t),i=S.punches.indexOf(v);if(i>-1){S.punches.splice(i,1);save();render()}};
@@ -569,7 +564,6 @@ $('add').onclick=()=>{
   if(S.punches.includes(ts)){m.textContent='Já existe um registro nesse horário.';return}
   S.punches.push(ts);save();m.textContent='';$('ft').value='';render();
 };
-$('meta').onchange=e=>{const v=parseFloat(e.target.value);if(v>=1&&v<=24){S.meta=v;save()}render()};
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const idb=()=>new Promise((res,rej)=>{const r=indexedDB.open('ponto-fotos',1);r.onupgradeneeded=()=>r.result.createObjectStore('f');r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)});
 const fput=async(id,b)=>{
@@ -656,17 +650,17 @@ const DL={async save({filename,data}){
 }};
 $('share').hidden=false;
 const lib=(src,ok)=>new Promise((res,rej)=>{if(ok())return res();const s=document.createElement('script');s.src=src;s.onload=()=>ok()?res():rej(new Error('lib'));s.onerror=()=>rej(new Error('lib'));document.head.appendChild(s)});
-function rows(){const days=byDay();return Object.keys(days).sort().map(k=>{const l=days[k],open=l.length%2===1,w=worked(l,false);return{l,open,w,df:open?null:w-S.meta*H,date:new Date(l[0])}})}
-const totals=R=>({tot:R.reduce((s,r)=>s+r.w,0),sal:R.reduce((s,r)=>s+(r.df||0),0)});
+function rows(){const days=byDay();return Object.keys(days).sort().map(k=>{const l=days[k],open=l.length%2===1,w=worked(l,false);return{l,open,w,date:new Date(l[0])}})}
+const totals=R=>({tot:R.reduce((s,r)=>s+r.w,0)});
 const wd=d=>d.toLocaleDateString('pt-BR',{weekday:'short'}).replace('.','');
 async function xls(){
   await lib('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js',()=>window.XLSX);
   const R=rows(),n=Math.max(4,...R.map(r=>r.l.length)),T=totals(R);
-  const head=['Data','Dia',...Array.from({length:n},(_,i)=>label(i)),'Total (h)','Saldo (h)','Observação'];
-  const body=R.map(r=>[r.date.toLocaleDateString('pt-BR'),wd(r.date),...Array.from({length:n},(_,i)=>r.l[i]!==undefined?hm(r.l[i]):''),+(r.w/H).toFixed(2),r.df===null?'':+(r.df/H).toFixed(2),r.open?'Saída faltando':'']);
+  const head=['Data','Dia',...Array.from({length:n},(_,i)=>label(i)),'Total (h)','Observação'];
+  const body=R.map(r=>[r.date.toLocaleDateString('pt-BR'),wd(r.date),...Array.from({length:n},(_,i)=>r.l[i]!==undefined?hm(r.l[i]):''),+(r.w/H).toFixed(2),r.open?'Saída faltando':'']);
   const ws=XLSX.utils.aoa_to_sheet([head,...body]);
   ws['!cols']=head.map(h=>({wch:Math.max(10,h.length+2)}));
-  const rs=XLSX.utils.aoa_to_sheet([['Vendedor (login)',currentUser.email||''],['Dias com registro',R.length],['Total trabalhado (h)',+(T.tot/H).toFixed(2)],['Jornada diária (h)',S.meta],['Saldo (h)',+(T.sal/H).toFixed(2)],['Gerado em',new Date().toLocaleString('pt-BR')]]);
+  const rs=XLSX.utils.aoa_to_sheet([['Vendedor (login)',currentUser.email||''],['Dias com registro',R.length],['Total trabalhado (h)',+(T.tot/H).toFixed(2)],['Meta semanal (h)',44],['Gerado em',new Date().toLocaleString('pt-BR')]]);
   rs['!cols']=[{wch:24},{wch:20}];
   const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Registros');XLSX.utils.book_append_sheet(wb,rs,'Resumo');
   if(S.visits.length){const V=[...S.visits].sort((a,b)=>a.ini-b.ini);
@@ -678,15 +672,14 @@ async function xls(){
 async function pdf(){
   await lib('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',()=>window.jspdf);
   const R=rows(),T=totals(R),doc=new window.jspdf.jsPDF({unit:'mm',format:'a4'});
-  const sa=ms=>(ms<0?'-':'+')+dur(ms);
   let y=20;
   doc.setFont('helvetica','bold');doc.setFontSize(18);doc.text('Registro de ponto',14,y);
   doc.setFont('helvetica','normal');doc.setFontSize(10);
   y+=7;doc.text('Vendedor (login): '+(currentUser.email||''),14,y);
   y+=6;doc.text('Gerado em '+new Date().toLocaleString('pt-BR'),14,y);
-  y+=6;doc.text('Dias com registro: '+R.length+'     Total trabalhado: '+dur(T.tot)+'     Jornada diária: '+S.meta+' h     Saldo: '+sa(T.sal),14,y);
+  y+=6;doc.text('Dias com registro: '+R.length+'     Total trabalhado: '+dur(T.tot)+'     Meta semanal: 44h',14,y);
   y+=12;
-  const head=()=>{doc.setFont('helvetica','bold');doc.text('Data',14,y);doc.text('Registros',48,y);doc.text('Total',150,y);doc.text('Saldo',176,y);doc.line(14,y+2,196,y+2);y+=8;doc.setFont('helvetica','normal')};
+  const head=()=>{doc.setFont('helvetica','bold');doc.text('Data',14,y);doc.text('Registros',48,y);doc.text('Total',165,y);doc.line(14,y+2,196,y+2);y+=8;doc.setFont('helvetica','normal')};
   head();
   R.forEach(r=>{
     const txt=pairs(r.l).replace(/ – /g,' - ').replace('…','--:--').replace(/ · /g,'   |   ');
@@ -694,8 +687,8 @@ async function pdf(){
     if(y+h>284){doc.addPage();y=20;head()}
     doc.text(r.date.toLocaleDateString('pt-BR')+' '+wd(r.date),14,y);
     doc.text(reg,48,y);
-    doc.text(dur(r.w),150,y);
-    doc.text(r.open?'em aberto':sa(r.df),176,y);
+    doc.text(dur(r.w),165,y);
+    if(r.open)doc.text('em aberto',176,y);
     y+=h;
   });
   if(S.visits.length){
@@ -762,7 +755,7 @@ async function activate(session){
   $('authmsg').textContent='Não foi possível carregar os dados. '+(error.message||'Verifique a configuração do banco e tente novamente.');
  }
 }
-function deactivate(){cloudReady=false;currentUser=null;S={punches:[],meta:8,visits:[]};$('main').style.display='none';$('auth').hidden=false;$('loginpass').value=''}
+function deactivate(){cloudReady=false;currentUser=null;S={punches:[],visits:[]};$('main').style.display='none';$('auth').hidden=false;$('loginpass').value=''}
 $('loginform').addEventListener('submit',async e=>{
  e.preventDefault();const btn=$('loginbtn');btn.disabled=true;$('authmsg').textContent='Entrando…';
  try{
