@@ -87,14 +87,6 @@ input{font:inherit;color:var(--ink);background:var(--sf);border:1px solid var(--
 </form><p id="authmsg" role="status"></p>
 </section>
 <main id="main"><div class="account"><span id="accountemail"></span><button class="x" id="logout" type="button">Sair</button></div>
-  <section id="profile" style="margin-top:12px">
-    <h2>Meu cadastro</h2>
-    <div class="form">
-      <label class="w">Nome do vendedor<input id="profile-name" type="text" maxlength="80" autocomplete="name" placeholder="Digite seu nome"></label>
-      <button class="btn fill" id="profile-save" type="button">Salvar nome</button>
-    </div>
-    <p class="note" id="profile-msg" role="status"></p>
-  </section>
   <p class="date" id="date"></p>
   <p class="clock" id="clock">00:00:00</p>
   <p class="status" id="status"></p>
@@ -351,7 +343,7 @@ async function xls(){
   const body=R.map(r=>[r.date.toLocaleDateString('pt-BR'),wd(r.date),...Array.from({length:n},(_,i)=>r.l[i]!==undefined?hm(r.l[i]):''),+(r.w/H).toFixed(2),r.df===null?'':+(r.df/H).toFixed(2),r.open?'Saída faltando':'']);
   const ws=XLSX.utils.aoa_to_sheet([head,...body]);
   ws['!cols']=head.map(h=>({wch:Math.max(10,h.length+2)}));
-  const rs=XLSX.utils.aoa_to_sheet([['Dias com registro',R.length],['Total trabalhado (h)',+(T.tot/H).toFixed(2)],['Jornada diária (h)',S.meta],['Saldo (h)',+(T.sal/H).toFixed(2)],['Gerado em',new Date().toLocaleString('pt-BR')]]);
+  const rs=XLSX.utils.aoa_to_sheet([['Vendedor (login)',currentUser.email||''],['Dias com registro',R.length],['Total trabalhado (h)',+(T.tot/H).toFixed(2)],['Jornada diária (h)',S.meta],['Saldo (h)',+(T.sal/H).toFixed(2)],['Gerado em',new Date().toLocaleString('pt-BR')]]);
   rs['!cols']=[{wch:24},{wch:20}];
   const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Registros');XLSX.utils.book_append_sheet(wb,rs,'Resumo');
   if(S.visits.length){const V=[...S.visits].sort((a,b)=>a.ini-b.ini);
@@ -367,7 +359,8 @@ async function pdf(){
   let y=20;
   doc.setFont('helvetica','bold');doc.setFontSize(18);doc.text('Registro de ponto',14,y);
   doc.setFont('helvetica','normal');doc.setFontSize(10);
-  y+=7;doc.text('Gerado em '+new Date().toLocaleString('pt-BR'),14,y);
+  y+=7;doc.text('Vendedor (login): '+(currentUser.email||''),14,y);
+  y+=6;doc.text('Gerado em '+new Date().toLocaleString('pt-BR'),14,y);
   y+=6;doc.text('Dias com registro: '+R.length+'     Total trabalhado: '+dur(T.tot)+'     Jornada diária: '+S.meta+' h     Saldo: '+sa(T.sal),14,y);
   y+=12;
   const head=()=>{doc.setFont('helvetica','bold');doc.text('Data',14,y);doc.text('Registros',48,y);doc.text('Total',150,y);doc.text('Saldo',176,y);doc.line(14,y+2,196,y+2);y+=8;doc.setFont('helvetica','normal')};
@@ -429,10 +422,7 @@ setTimeout(()=>{lib('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.um
 $('fd').value=dkey(Date.now());
 async function activate(session){
  currentUser=session.user;cloudReady=false;
- const savedName=currentUser.user_metadata&&currentUser.user_metadata.full_name?currentUser.user_metadata.full_name:'';
- $('profile-name').value=savedName;
- $('profile-msg').textContent='';
- $('accountemail').textContent=(savedName?savedName+' · ':'')+(currentUser.email||'Conta conectada');
+ $('accountemail').textContent=currentUser.email||'Conta conectada';
  $('authmsg').textContent='Carregando seus registros…';
  try{
   await loadCloudData();
@@ -462,21 +452,6 @@ $('loginform').addEventListener('submit',async e=>{
   $('authmsg').textContent='Não foi possível concluir o login. Verifique a conexão e tente novamente.';
  }finally{btn.disabled=false}
 });
-$('profile-save').onclick=async()=>{
- const btn=$('profile-save'),name=$('profile-name').value.trim();
- if(!name){$('profile-msg').textContent='Digite seu nome antes de salvar.';return}
- btn.disabled=true;$('profile-msg').textContent='Salvando…';
- try{
-  const {data,error}=await sb.auth.updateUser({data:{full_name:name}});
-  if(error)throw error;
-  currentUser=data.user;
-  $('accountemail').textContent=name+' · '+(currentUser.email||'Conta conectada');
-  $('profile-msg').textContent='Nome salvo com sucesso.';
- }catch(error){
-  console.error('Falha ao salvar cadastro:',error);
-  $('profile-msg').textContent='Não foi possível salvar. Tente novamente.';
- }finally{btn.disabled=false}
-};
 $('logout').onclick=async()=>{const {error}=await sb.auth.signOut();if(error){$('authmsg').textContent='Não foi possível sair da conta.';return}deactivate()};
 (async()=>{const {data,error}=await sb.auth.getSession();if(error){$('authmsg').textContent='Falha ao verificar a sessão.';return}
  if(data.session)await activate(data.session);else deactivate();
