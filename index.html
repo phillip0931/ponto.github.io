@@ -69,10 +69,24 @@ input{font:inherit;color:var(--ink);background:var(--sf);border:1px solid var(--
 .btn[disabled]{opacity:.5;cursor:default}
 .note{margin:8px 0 0;color:var(--mu);font-size:.9rem;min-height:1.3em}
 @media (prefers-reduced-motion:reduce){.punch{transition:none}}
+#auth{max-width:440px;margin:12vh auto;padding:24px 20px;background:var(--sf);border:1px solid var(--ln);border-radius:18px}
+#auth h1{margin:0 0 6px;font-size:1.5rem}#auth p{color:var(--mu);margin:0 0 18px}
+#auth form{display:grid;gap:12px}#auth label{gap:6px}#auth input{width:100%;padding:12px}
+#auth button{width:100%;padding:12px}#authmsg{min-height:1.4em;color:var(--neg);font-size:.92rem;margin:10px 0 0}
+.account{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:0 0 18px;color:var(--mu);font-size:.9rem}
+.account button{font-size:.85rem}main{display:none}
 </style>
 </head>
 <body>
-<main>
+<section id="auth">
+<h1>Acesso ao Ponto</h1><p>Entre com seu e-mail e senha para acessar seus registros.</p>
+<form id="loginform">
+<label>E-mail<input id="loginemail" type="email" autocomplete="username" required></label>
+<label>Senha<input id="loginpass" type="password" autocomplete="current-password" required></label>
+<button class="btn fill" id="loginbtn" type="submit">Entrar</button>
+</form><p id="authmsg" role="status"></p>
+</section>
+<main><div class="account"><span id="accountemail"></span><button class="x" id="logout" type="button">Sair</button></div>
   <p class="date" id="date"></p>
   <p class="clock" id="clock">00:00:00</p>
   <p class="status" id="status"></p>
@@ -120,7 +134,7 @@ input{font:inherit;color:var(--ink);background:var(--sf);border:1px solid var(--
     <div class="card hist" id="hist"></div>
     <div class="share" id="share" hidden>
       <h2>Compartilhar</h2>
-      <p class="mes" style="margin-bottom:0">Gera um arquivo com todos os registros e visitas salvos neste navegador. No celular, abre o menu de compartilhar, onde você escolhe o WhatsApp.</p>
+      <p class="mes" style="margin-bottom:0">Gera um arquivo atualizado com os pontos, visitas e fotos da sua conta no banco de dados.</p>
       <div class="acts">
         <button class="btn fill" id="xpdf" type="button">Gerar PDF</button>
         <button class="btn" id="xxls" type="button">Gerar planilha</button>
@@ -134,11 +148,57 @@ input{font:inherit;color:var(--ink);background:var(--sf);border:1px solid var(--
   </section>
 </main>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
+const SUPABASE_URL="https://nafifpkbhfyakekuyvlz.supabase.co";
+const SUPABASE_KEY="sb_publishable_K-t2c0gFpT8mB-GreCG2lw_ZLqOz_cB";
+const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+let currentUser=null,cloudReady=false,saveChain=Promise.resolve();
+let cloudSnapshot={punches:new Set(),visits:new Map()};
 const K='ponto:v1';
 let S={punches:[],meta:8,visits:[]};
-try{const r=localStorage.getItem(K);if(r){const o=JSON.parse(r);if(Array.isArray(o.punches))S.punches=o.punches.filter(Number.isFinite);if(o.meta>0)S.meta=o.meta;if(Array.isArray(o.visits))S.visits=o.visits.filter(v=>v&&Number.isFinite(v.ini))}}catch(e){}
-const save=()=>{try{localStorage.setItem(K,JSON.stringify(S))}catch(e){}};
+const save=()=>{
+ if(!cloudReady||!currentUser)return;
+ const uid=currentUser.id;
+ saveChain=saveChain.then(async()=>{
+  const currentPunches=new Set(S.punches.map(t=>new Date(t).toISOString()));
+  const punchRows=[...currentPunches].map(punched_at=>({user_id:uid,punched_at}));
+  if(punchRows.length){const {error}=await sb.from('punches').upsert(punchRows,{onConflict:'user_id,punched_at'});if(error)throw error}
+  for(const old of cloudSnapshot.punches)if(!currentPunches.has(old)){
+   const {error}=await sb.from('punches').delete().eq('user_id',uid).eq('punched_at',old);if(error)throw error;
+  }
+  const currentVisits=new Map(S.visits.map(v=>[v.id,v]));
+  const visitRows=[...currentVisits.values()].map(v=>({
+   id:v.id,user_id:uid,client:v.c,reason:v.m||'',notes:v.o||'',
+   started_at:new Date(v.ini).toISOString(),ended_at:v.fim?new Date(v.fim).toISOString():null,photo_path:v.photo_path||null
+  }));
+  if(visitRows.length){const {error}=await sb.from('visits').upsert(visitRows,{onConflict:'id'});if(error)throw error}
+  for(const [oldId,oldPath] of cloudSnapshot.visits)if(!currentVisits.has(oldId)){
+   if(oldPath){const {error:e}=await sb.storage.from('visit-photos').remove([oldPath]);if(e)throw e}
+   const {error}=await sb.from('visits').delete().eq('user_id',uid).eq('id',oldId);if(error)throw error;
+  }
+  const {error}=await sb.from('user_settings').upsert({user_id:uid,daily_goal:S.meta},{onConflict:'user_id'});if(error)throw error;
+  cloudSnapshot={punches:currentPunches,visits:new Map([...currentVisits].map(([id,v])=>[id,v.photo_path||null]))};
+ }).catch(error=>{
+  console.error('Falha ao sincronizar:',error);
+  const note=$('snote');if(note)note.textContent='Não foi possível sincronizar. Verifique sua conexão e tente novamente.';
+  const status=$('status');if(status)status.title='Erro de sincronização: '+(error.message||'');
+ });
+ return saveChain;
+};
+async function loadCloudData(){
+ const uid=currentUser.id;
+ const [p,v,g]=await Promise.all([
+  sb.from('punches').select('punched_at').eq('user_id',uid).order('punched_at'),
+  sb.from('visits').select('id,client,reason,notes,started_at,ended_at,photo_path').eq('user_id',uid).order('started_at',{ascending:false}),
+  sb.from('user_settings').select('daily_goal').eq('user_id',uid).maybeSingle()
+ ]);
+ if(p.error)throw p.error;if(v.error)throw v.error;if(g.error)throw g.error;
+ S.punches=(p.data||[]).map(x=>Date.parse(x.punched_at)).filter(Number.isFinite);
+ S.visits=(v.data||[]).map(x=>({id:x.id,c:x.client,m:x.reason||'',o:x.notes||'',ini:Date.parse(x.started_at),fim:x.ended_at?Date.parse(x.ended_at):null,foto:!!x.photo_path,photo_path:x.photo_path||null})).filter(x=>Number.isFinite(x.ini));
+ S.meta=g.data?.daily_goal>0?Number(g.data.daily_goal):8;
+ cloudSnapshot={punches:new Set((p.data||[]).map(x=>new Date(x.punched_at).toISOString())),visits:new Map((v.data||[]).map(x=>[x.id,x.photo_path||null]))};
+}
 const $=id=>document.getElementById(id);
 const pad=n=>String(n).padStart(2,'0');
 const dkey=t=>{const d=new Date(t);return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())};
@@ -196,9 +256,19 @@ $('add').onclick=()=>{
 $('meta').onchange=e=>{const v=parseFloat(e.target.value);if(v>=1&&v<=24){S.meta=v;save()}render()};
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const idb=()=>new Promise((res,rej)=>{const r=indexedDB.open('ponto-fotos',1);r.onupgradeneeded=()=>r.result.createObjectStore('f');r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)});
-const fput=async(id,b)=>{const d=await idb();return new Promise((res,rej)=>{const t=d.transaction('f','readwrite');t.objectStore('f').put(b,id);t.oncomplete=res;t.onerror=()=>rej(t.error)})};
-const fget=async id=>{const d=await idb();return new Promise((res,rej)=>{const q=d.transaction('f').objectStore('f').get(id);q.onsuccess=()=>res(q.result);q.onerror=()=>rej(q.error)})};
-const fdel=async id=>{const d=await idb();return new Promise(res=>{const t=d.transaction('f','readwrite');t.objectStore('f').delete(id);t.oncomplete=res;t.onerror=res})};
+const fput=async(id,b)=>{
+ const path=currentUser.id+'/'+id+'.jpg';
+ const {error}=await sb.storage.from('visit-photos').upload(path,b,{contentType:'image/jpeg',upsert:true});
+ if(error)throw error;return path;
+};
+const fget=async id=>{
+ const v=S.visits.find(x=>x.id===id);if(!v?.photo_path)return null;
+ const {data,error}=await sb.storage.from('visit-photos').download(v.photo_path);if(error)throw error;return data;
+};
+const fdel=async id=>{
+ const v=S.visits.find(x=>x.id===id),path=v?.photo_path||(currentUser.id+'/'+id+'.jpg');
+ if(path){const {error}=await sb.storage.from('visit-photos').remove([path]);if(error)throw error}
+};
 async function shrink(file,m=1000,q=.7){
   const url=URL.createObjectURL(file);
   try{
@@ -211,7 +281,7 @@ async function shrink(file,m=1000,q=.7){
     return b;
   }finally{URL.revokeObjectURL(url)}
 }
-const vid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+const vid=()=>crypto.randomUUID();
 const tms=(d,t)=>new Date(d+'T'+t).getTime();
 const nowHM=()=>{const n=new Date();return pad(n.getHours())+':'+pad(n.getMinutes())};
 let urls=[];
@@ -233,7 +303,7 @@ $('vlist').onclick=e=>{
   const im=e.target.closest('img');if(im){im.classList.toggle('big');return}
   const b=e.target.closest('[data-v]');if(!b)return;
   const i=S.visits.findIndex(x=>x.id===b.dataset.v);
-  if(i>-1){const v=S.visits.splice(i,1)[0];if(v.foto)fdel(v.id).catch(()=>{});save();renderV()}
+  if(i>-1){S.visits.splice(i,1);save();renderV()}
 };
 $('vadd').onclick=async()=>{
   const m=$('vmsg'),bt=$('vadd'),c=$('vc').value.trim(),d=$('vd').value,a=$('va').value,s=$('vs').value;
@@ -245,9 +315,9 @@ $('vadd').onclick=async()=>{
   if(fim&&fim<ini){m.textContent='A saída precisa ser depois da chegada.';return}
   if(!fim&&S.visits.some(x=>!x.fim)){m.textContent='Já existe uma visita em andamento. Registre a saída dela antes.';return}
   bt.disabled=true;
-  const v={id:vid(),c,m:$('vm').value.trim(),o:$('vo').value.trim(),ini,fim,foto:false};
+  const v={id:vid(),c,m:$('vm').value.trim(),o:$('vo').value.trim(),ini,fim,foto:false,photo_path:null};
   let warn='';const f=$('vf').files[0];
-  if(f){try{await fput(v.id,await shrink(f));v.foto=true}catch(e){warn='A visita foi registrada, mas não foi possível guardar a foto.'}}
+  if(f){try{v.photo_path=await fput(v.id,await shrink(f));v.foto=true}catch(e){warn='A visita foi registrada, mas não foi possível guardar a foto.'}}
   S.visits.push(v);save();
   ['vc','vm','vo','vs','va'].forEach(i=>$(i).value='');$('vf').value='';
   m.textContent=warn;bt.disabled=false;renderV();
@@ -336,6 +406,7 @@ async function go(kind){
   if(!S.punches.length&&!S.visits.length){note.textContent='Ainda não há registros para compartilhar.';return}
   btns.forEach(b=>b.disabled=true);note.textContent='Gerando arquivo…';
   try{
+    await saveChain;await loadCloudData();render();renderV();
     const data=await(kind==='pdf'?pdf():xls());
     await DL.save({filename:'ponto-'+dkey(Date.now())+'.'+(kind==='pdf'?'pdf':'xlsx'),data});
     note.textContent='Arquivo salvo.';
@@ -348,8 +419,23 @@ async function go(kind){
 $('xpdf').onclick=()=>go('pdf');$('xxls').onclick=()=>go('xlsx');
 setTimeout(()=>{lib('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',()=>window.jspdf).catch(()=>{});lib('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js',()=>window.XLSX).catch(()=>{})},800);
 $('fd').value=dkey(Date.now());
-render();renderV();
-setInterval(()=>{const n=new Date();if(n.getSeconds()===0)render();else tick()},1000);
+async function activate(session){
+ currentUser=session.user;cloudReady=false;$('auth').hidden=true;$('main').style.display='block';
+ $('accountemail').textContent=currentUser.email||'Conta conectada';$('authmsg').textContent='';
+ try{await loadCloudData();cloudReady=true;render();renderV();setInterval(()=>{const n=new Date();if(n.getSeconds()===0)render();else tick()},1000)}
+ catch(error){console.error(error);$('main').style.display='none';$('auth').hidden=false;$('authmsg').textContent='Não foi possível carregar os dados. Confirme se o banco foi configurado.'}
+}
+function deactivate(){cloudReady=false;currentUser=null;S={punches:[],meta:8,visits:[]};$('main').style.display='none';$('auth').hidden=false;$('loginpass').value=''}
+$('loginform').addEventListener('submit',async e=>{
+ e.preventDefault();const btn=$('loginbtn');btn.disabled=true;$('authmsg').textContent='Entrando…';
+ const {data,error}=await sb.auth.signInWithPassword({email:$('loginemail').value.trim(),password:$('loginpass').value});
+ btn.disabled=false;if(error){$('authmsg').textContent='E-mail ou senha incorretos, ou conta não confirmada.';return}await activate(data.session);
+});
+$('logout').onclick=async()=>{const {error}=await sb.auth.signOut();if(error){$('authmsg').textContent='Não foi possível sair da conta.';return}deactivate()};
+(async()=>{const {data,error}=await sb.auth.getSession();if(error){$('authmsg').textContent='Falha ao verificar a sessão.';return}
+ if(data.session)await activate(data.session);else deactivate();
+ sb.auth.onAuthStateChange((event,session)=>{if(event==='SIGNED_OUT')deactivate();else if(event==='SIGNED_IN'&&session)setTimeout(()=>activate(session),0)});
+})();
 </script>
 </body>
 </html>
