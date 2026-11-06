@@ -321,6 +321,48 @@ input,button{box-sizing:border-box}
  #vdet .vform input[type=file]{font-size:.82rem;padding:8px}
 }
 
+
+/* Refinamento desktop, botão de registro manual e microinterações */
+@media (min-width: 900px){
+  main#main{
+    width: min(100% - 48px, 1180px)!important;
+    max-width: 1180px!important;
+    margin-left:auto!important;
+    margin-right:auto!important;
+    padding-left:28px;
+    padding-right:28px;
+  }
+}
+#add{
+  background:#302e87!important;
+  color:#fff!important;
+  border:1px solid #302e87!important;
+  border-radius:11px;
+  padding:11px 18px;
+  font-weight:750;
+  box-shadow:0 4px 12px rgba(48,46,135,.20);
+}
+#add:hover{background:#242365!important;box-shadow:0 7px 16px rgba(48,46,135,.25)}
+button,.btn,.quick-link,summary,a[role="button"],.share .acts a{
+  transition:background-color .18s ease,color .18s ease,border-color .18s ease,
+    box-shadow .18s ease,transform .18s ease,opacity .18s ease;
+}
+@media (hover:hover) and (pointer:fine){
+  button:not(:disabled),.btn:not(:disabled),summary,.quick-link,a[role="button"]{
+    cursor:pointer;
+  }
+  button:not(:disabled):hover,.btn:not(:disabled):hover{
+    transform:translateY(-1px);
+    box-shadow:0 5px 13px rgba(35,35,65,.12);
+  }
+  .card:hover{border-color:#d6d0e6}
+  summary:hover{color:#302e87}
+}
+button:active,.btn:active,.quick-link:active{transform:scale(.985)}
+@media (prefers-reduced-motion:reduce){
+  button,.btn,.quick-link,summary,a[role="button"],.share .acts a{transition:none!important}
+}
+
 </style>
 </head>
 <body>
