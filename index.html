@@ -745,10 +745,11 @@ $('fd').value=dkey(Date.now());
 async function activate(session){
  currentUser=session.user;cloudReady=false;
  $('accountemail').textContent=currentUser.email||'Conta conectada';
- const {data:profile,error:profileError}=await sb.from('profiles').select('role').eq('user_id',currentUser.id).single();
- $('adminLink').hidden=!!profileError||profile?.role!=='admin';
- $('authmsg').textContent='Carregando seus registros…';
  try{
+  const {data:profile,error:profileError}=await sb.from('profiles').select('role').eq('user_id',currentUser.id).single();
+  if(profileError)throw profileError;
+  $('adminLink').hidden=profile?.role!=='admin';
+  $('authmsg').textContent='Carregando seus registros…';
   await loadCloudData();
   cloudReady=true;
   $('auth').hidden=true;
