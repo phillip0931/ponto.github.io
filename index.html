@@ -465,7 +465,7 @@ button:active,.btn:active,.quick-link:active{transform:scale(.985)}
 const SUPABASE_URL="https://nafifpkbhfyakekuyvlz.supabase.co";
 const SUPABASE_KEY="sb_publishable_K-t2c0gFpT8mB-GreCG2lw_ZLqOz_cB";
 const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
-let currentUser=null,cloudReady=false,saveChain=Promise.resolve();
+let currentUser=null,cloudReady=false,saveChain=Promise.resolve(),syncError=null;
 let cloudSnapshot={punches:new Set(),visits:new Map()};
 const K='ponto:v1';
 let S={punches:[],visits:[]};
@@ -483,7 +483,9 @@ const save=()=>{
   }));
   if(visitRows.length){const {error}=await sb.from('visits').upsert(visitRows,{onConflict:'id'});if(error)throw error}
   cloudSnapshot={punches:currentPunches,visits:new Map([...currentVisits].map(([id,v])=>[id,v.photo_path||null]))};
+  syncError=null;
  }).catch(error=>{
+  syncError=error;
   console.error('Falha ao sincronizar:',error);
   const note=$('snote');if(note)note.textContent='Não foi possível sincronizar. Verifique sua conexão e tente novamente.';
   const status=$('status');if(status)status.title='Erro de sincronização: '+(error.message||'');
@@ -608,7 +610,7 @@ $('vlist').onclick=e=>{
   const im=e.target.closest('img');if(im){im.classList.toggle('big');return}
   const b=e.target.closest('[data-v]');if(!b)return;
   const i=S.visits.findIndex(x=>x.id===b.dataset.v);
-  if(i>-1){b.disabled=true;try{await saveChain;const v=S.visits[i];if(v.photo_path){const {error}=await sb.storage.from('visit-photos').remove([v.photo_path]);if(error)throw error}const {error}=await sb.from('visits').delete().eq('user_id',currentUser.id).eq('id',v.id);if(error)throw error;S.visits.splice(i,1);cloudSnapshot.visits.delete(v.id);renderV()}catch(err){console.error(err);$('snote').textContent='Não foi possível remover a visita. Tente novamente.';b.disabled=false}}
+  if(i>-1){b.disabled=true;try{await saveChain;if(syncError)throw syncError;const v=S.visits[i];const {error}=await sb.from('visits').delete().eq('user_id',currentUser.id).eq('id',v.id);if(error)throw error;S.visits.splice(i,1);cloudSnapshot.visits.delete(v.id);renderV();if(v.photo_path){const {error:photoError}=await sb.storage.from('visit-photos').remove([v.photo_path]);if(photoError){console.warn('Visita removida; foto não pôde ser limpa:',photoError);$('snote').textContent='Visita removida. A limpeza da foto ficou pendente.'}}}catch(err){console.error(err);$('snote').textContent='Não foi possível remover a visita. Tente novamente.';b.disabled=false}}
 };
 $('vadd').onclick=async()=>{
   const m=$('vmsg'),bt=$('vadd'),c=$('vc').value.trim(),d=$('vd').value,a=$('va').value,s=$('vs').value;
@@ -622,8 +624,17 @@ $('vadd').onclick=async()=>{
   bt.disabled=true;
   const v={id:vid(),c,m:$('vm').value.trim(),o:$('vo').value.trim(),ini,fim,foto:false,photo_path:null};
   let warn='';const f=$('vf').files[0];
-  if(f){try{v.photo_path=await fput(v.id,await shrink(f));v.foto=true}catch(e){warn='A visita foi registrada, mas não foi possível guardar a foto.'}}
-  S.visits.push(v);save();
+  if(f){try{v.photo_path=await fput(v.id,await shrink(f));v.foto=true}catch(e){warn='A visita será registrada sem foto, pois não foi possível guardar o arquivo.'}}
+  S.visits.push(v);
+  try{
+    await save();
+    if(syncError)throw syncError;
+  }catch(e){
+    S.visits=S.visits.filter(x=>x.id!==v.id);
+    if(v.photo_path){try{await sb.storage.from('visit-photos').remove([v.photo_path])}catch(cleanupError){console.warn('Foto órfã para limpeza posterior:',cleanupError)}}
+    m.textContent='Não foi possível salvar a visita no banco. Confira a conexão e tente novamente.';
+    bt.disabled=false;renderV();return;
+  }
   ['vc','vm','vo','vs','va'].forEach(i=>$(i).value='');$('vf').value='';
   m.textContent=warn;bt.disabled=false;renderV();
 };
