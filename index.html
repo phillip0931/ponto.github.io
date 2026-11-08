@@ -829,7 +829,11 @@ async function loadAdminDashboard(){
  msg.textContent='Dados atualizados em '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})+'.';
 }
 $('admin-refresh').onclick=()=>loadAdminDashboard().catch(e=>{$('admin-message').textContent='Erro ao carregar painel: '+(e.message||'verifique as permissões');$('admin-message').className='admin-error'});
-$('back-admin').onclick=async()=>{\n $('main').style.display='none';$('back-admin').hidden=true;$('admin-dashboard').style.display='block';\n try{await loadAdminDashboard()}catch(e){$('admin-message').textContent='Erro ao atualizar painel: '+(e.message||'');$('admin-message').className='admin-error'}\n};\n$('admin-my-point').onclick=async()=>{
+$('back-admin').onclick=async()=>{
+ $('main').style.display='none';$('back-admin').hidden=true;$('admin-dashboard').style.display='block';
+ try{await loadAdminDashboard()}catch(e){$('admin-message').textContent='Erro ao atualizar painel: '+(e.message||'');$('admin-message').className='admin-error'}
+};
+$('admin-my-point').onclick=async()=>{
  try{
   $('admin-dashboard').style.display='none';
   await loadCloudData();cloudReady=true;$('main').style.display='block';if(currentRole==='admin')$('back-admin').hidden=false;render();renderV();
