@@ -606,7 +606,7 @@ function renderV(){
 }
 $('vdet').addEventListener('toggle',()=>{if($('vdet').open){$('vd').value=dkey(Date.now());if(!$('va').value)$('va').value=nowHM()}});
 $('vopen').onclick=e=>{if(!e.target.closest('#vout'))return;const v=S.visits.find(x=>!x.fim);if(v){v.fim=Math.max(Date.now(),v.ini);save();renderV()}};
-$('vlist').onclick=e=>{
+$('vlist').onclick=async e=>{
   const im=e.target.closest('img');if(im){im.classList.toggle('big');return}
   const b=e.target.closest('[data-v]');if(!b)return;
   const i=S.visits.findIndex(x=>x.id===b.dataset.v);
