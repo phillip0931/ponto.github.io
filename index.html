@@ -363,6 +363,29 @@ button:active,.btn:active,.quick-link:active{transform:scale(.985)}
   button,.btn,.quick-link,summary,a[role="button"],.share .acts a{transition:none!important}
 }
 
+
+/* Dashboard administrativo */
+#admin-dashboard{display:none;max-width:1180px;margin:24px auto 64px;padding:0 24px}
+.admin-head{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:22px}
+.admin-head h1{margin:0;color:#302e87;font-size:1.65rem}
+.admin-head p{margin:4px 0 0;color:#706d79}
+.admin-actions{display:flex;gap:8px;flex-wrap:wrap}
+.admin-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+.admin-stat{background:#fff;border:1px solid #e7e3eb;border-radius:16px;padding:18px;box-shadow:0 5px 18px rgba(55,45,80,.04)}
+.admin-stat small{display:block;color:#706d79;font-weight:600}
+.admin-stat strong{display:block;font-size:2rem;line-height:1.25;color:#302e87;margin-top:5px}
+.admin-panel{background:#fff;border:1px solid #e7e3eb;border-radius:16px;padding:18px;margin-top:18px;box-shadow:0 5px 18px rgba(55,45,80,.04);min-width:0}
+.admin-panel h2{color:#302e87;margin:0 0 12px}
+.admin-table-wrap{overflow-x:auto}
+.admin-table{width:100%;border-collapse:collapse;font-size:.92rem}
+.admin-table th,.admin-table td{text-align:left;padding:11px 10px;border-bottom:1px solid #eeeaf1;white-space:nowrap}
+.admin-table th{color:#706d79;font-size:.78rem;text-transform:uppercase;letter-spacing:.04em}
+.admin-pill{display:inline-block;padding:4px 9px;border-radius:99px;background:#f1efff;color:#302e87;font-size:.78rem;font-weight:700}
+.admin-pill.active{background:#fff0e9;color:#c7472e}
+.admin-error{color:#b42318;background:#fff2f0;padding:12px;border-radius:10px}
+@media(max-width:760px){#admin-dashboard{padding:0 14px;margin-top:14px}.admin-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.admin-head{align-items:flex-start;flex-direction:column}.admin-stat{padding:14px}.admin-stat strong{font-size:1.65rem}}
+@media(max-width:390px){.admin-grid{grid-template-columns:1fr 1fr;gap:8px}.admin-stat{padding:11px}.admin-stat strong{font-size:1.4rem}}
+
 </style>
 </head>
 <body>
@@ -460,12 +483,37 @@ button:active,.btn:active,.quick-link:active{transform:scale(.985)}
   </section>
 </main>
 
+<section id="admin-dashboard" aria-label="Painel administrativo">
+  <div class="admin-head">
+    <div><h1>Painel administrativo</h1><p>Resgatécnica · Visão geral da equipe</p></div>
+    <div class="admin-actions">
+      <button class="btn" id="admin-refresh" type="button">Atualizar dados</button>
+      <button class="btn fill" id="admin-my-point" type="button">Meu ponto</button>
+    </div>
+  </div>
+  <div id="admin-message" class="note" role="status">Carregando informações da equipe…</div>
+  <div class="admin-grid">
+    <div class="admin-stat"><small>Vendedores cadastrados</small><strong id="adm-users">—</strong></div>
+    <div class="admin-stat"><small>Em atividade hoje</small><strong id="adm-active">—</strong></div>
+    <div class="admin-stat"><small>Horas registradas na semana</small><strong id="adm-hours">—</strong></div>
+    <div class="admin-stat"><small>Visitas nesta semana</small><strong id="adm-visits">—</strong></div>
+  </div>
+  <div class="admin-panel">
+    <h2>Equipe</h2>
+    <div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>Vendedor</th><th>Status hoje</th><th>Horas na semana</th><th>Visitas na semana</th></tr></thead><tbody id="admin-team"><tr><td colspan="4">Carregando…</td></tr></tbody></table></div>
+  </div>
+  <div class="admin-panel">
+    <h2>Visitas recentes</h2>
+    <div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>Data</th><th>Vendedor</th><th>Cliente</th><th>Motivo</th></tr></thead><tbody id="admin-recent-visits"><tr><td colspan="4">Carregando…</td></tr></tbody></table></div>
+  </div>
+</section>
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 const SUPABASE_URL="https://nafifpkbhfyakekuyvlz.supabase.co";
 const SUPABASE_KEY="sb_publishable_K-t2c0gFpT8mB-GreCG2lw_ZLqOz_cB";
 const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
-let currentUser=null,cloudReady=false,saveChain=Promise.resolve();
+let currentUser=null,cloudReady=false,saveChain=Promise.resolve(),currentRole='seller';
 let cloudSnapshot={punches:new Set(),visits:new Map()};
 const K='ponto:v1';
 let S={punches:[],visits:[]};
@@ -736,26 +784,83 @@ async function go(kind){
 $('xpdf').onclick=()=>go('pdf');$('xxls').onclick=()=>go('xlsx');
 setTimeout(()=>{lib('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',()=>window.jspdf).catch(()=>{});lib('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js',()=>window.XLSX).catch(()=>{})},800);
 $('fd').value=dkey(Date.now());
-async function activate(session){
- currentUser=session.user;cloudReady=false;
- $('accountemail').textContent=currentUser.email||'Conta conectada';
- $('authmsg').textContent='Carregando seus registros…';
+async function loadAdminDashboard(){
+ const msg=$('admin-message');msg.textContent='Atualizando dados da equipe…';msg.className='note';
+ const [pr,pu,vi]=await Promise.all([
+  sb.from('profiles').select('user_id,role'),
+  sb.from('punches').select('user_id,punched_at').order('punched_at',{ascending:false}),
+  sb.from('visits').select('user_id,client,reason,started_at,ended_at').order('started_at',{ascending:false}).limit(100)
+ ]);
+ if(pr.error)throw pr.error;if(pu.error)throw pu.error;if(vi.error)throw vi.error;
+ const profiles=pr.data||[],punches=pu.data||[],visits=vi.data||[];
+ const sellers=profiles.filter(x=>x.role==='seller');
+ const ids=[...new Set([...sellers.map(x=>x.user_id),...punches.map(x=>x.user_id),...visits.map(x=>x.user_id)])];
+ const names={
+  '26dc1075-4bae-425b-b65a-ce12f2bcd1b2':'João Phillip (Administrador)',
+  '258c92e9-8762-4774-b64e-e18b222d9d3f':'Walter'
+ };
+ const name=id=>names[id]||('Usuário '+id.slice(0,8));
+ const today=dkey(Date.now()),now=new Date(),monday=new Date(now.getFullYear(),now.getMonth(),now.getDate());
+ monday.setDate(monday.getDate()-((monday.getDay()+6)%7));
+ const weekStart=dkey(monday.getTime());
+ const byUser={};
+ ids.forEach(id=>byUser[id]={p:[],v:[]});
+ punches.forEach(x=>{if(byUser[x.user_id])byUser[x.user_id].p.push(Date.parse(x.punched_at))});
+ visits.forEach(x=>{if(byUser[x.user_id])byUser[x.user_id].v.push(x)});
+ let totalHours=0,totalVisits=0,active=0;
+ const rows=ids.filter(id=>profiles.some(p=>p.user_id===id&&p.role==='seller')).map(id=>{
+  const p=byUser[id].p.sort((a,b)=>a-b),days={};
+  p.forEach(t=>(days[dkey(t)]=days[dkey(t)]||[]).push(t));
+  const todayList=days[today]||[],isActive=todayList.length%2===1;
+  let ms=0;
+  Object.keys(days).filter(k=>k>=weekStart&&k<=today).forEach(k=>{
+   const a=days[k];for(let i=0;i<a.length;i+=2)ms+=(a[i+1]!==undefined?a[i+1]:(k===today?Date.now():a[i]))-a[i];
+  });
+  const weekVisits=byUser[id].v.filter(v=>dkey(Date.parse(v.started_at))>=weekStart&&dkey(Date.parse(v.started_at))<=today).length;
+  totalHours+=ms;totalVisits+=weekVisits;if(isActive)active++;
+  return {id,name:name(id),active:isActive,ms,visits:weekVisits};
+ });
+ $('adm-users').textContent=sellers.length;
+ $('adm-active').textContent=active;
+ $('adm-hours').textContent=dur(totalHours);
+ $('adm-visits').textContent=totalVisits;
+ $('admin-team').innerHTML=rows.length?rows.map(x=>'<tr><td>'+esc(x.name)+'</td><td><span class="admin-pill '+(x.active?'active':'')+'">'+(x.active?'Em atividade':'Sem expediente')+'</span></td><td>'+dur(x.ms)+'</td><td>'+x.visits+'</td></tr>').join(''):'<tr><td colspan="4">Nenhum vendedor cadastrado.</td></tr>';
+ $('admin-recent-visits').innerHTML=visits.length?visits.slice(0,12).map(v=>'<tr><td>'+new Date(v.started_at).toLocaleDateString('pt-BR')+'</td><td>'+esc(name(v.user_id))+'</td><td>'+esc(v.client)+'</td><td>'+esc(v.reason||'—')+'</td></tr>').join(''):'<tr><td colspan="4">Nenhuma visita registrada.</td></tr>';
+ msg.textContent='Dados atualizados em '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})+'.';
+}
+$('admin-refresh').onclick=()=>loadAdminDashboard().catch(e=>{$('admin-message').textContent='Erro ao carregar painel: '+(e.message||'verifique as permissões');$('admin-message').className='admin-error'});
+$('admin-my-point').onclick=async()=>{
  try{
-  await loadCloudData();
-  cloudReady=true;
-  $('auth').hidden=true;
-  $('main').style.display='block';
-  $('authmsg').textContent='';
-  render();renderV();
-  if(!window.__pontoTimer)window.__pontoTimer=setInterval(()=>{const n=new Date();if(n.getSeconds()===0)render();else tick()},1000);
+  $('admin-dashboard').style.display='none';
+  await loadCloudData();cloudReady=true;$('main').style.display='block';render();renderV();
+ }catch(e){$('admin-dashboard').style.display='block';$('admin-message').textContent='Não foi possível carregar seu ponto: '+(e.message||'');}
+};
+async function activate(session){
+ currentUser=session.user;cloudReady=false;currentRole='seller';
+ $('accountemail').textContent=currentUser.email||'Conta conectada';
+ $('authmsg').textContent='Verificando permissões…';
+ try{
+  const {data:profile,error:profileError}=await sb.from('profiles').select('role').eq('user_id',currentUser.id).maybeSingle();
+  if(profileError)throw profileError;
+  if(!profile||!['admin','seller'].includes(profile.role))throw new Error('Seu usuário não possui um perfil de acesso configurado.');
+  currentRole=profile.role;
+  $('auth').hidden=true;$('authmsg').textContent='';
+  if(currentRole==='admin'){
+   $('main').style.display='none';$('admin-dashboard').style.display='block';
+   await loadAdminDashboard();
+  }else{
+   $('admin-dashboard').style.display='none';
+   await loadCloudData();cloudReady=true;$('main').style.display='block';render();renderV();
+  }
+  if(!window.__pontoTimer)window.__pontoTimer=setInterval(()=>{const n=new Date();if(n.getSeconds()===0&&currentRole==='seller')render();else if(currentRole==='seller')tick()},1000);
  }catch(error){
   console.error('Falha ao abrir o Ponto:',error);
   cloudReady=false;currentUser=null;
-  $('main').style.display='none';$('auth').hidden=false;
-  $('authmsg').textContent='Não foi possível carregar os dados. '+(error.message||'Verifique a configuração do banco e tente novamente.');
+  $('main').style.display='none';$('admin-dashboard').style.display='none';$('auth').hidden=false;
+  $('authmsg').textContent='Não foi possível carregar o acesso. '+(error.message||'Verifique a configuração do banco e tente novamente.');
  }
 }
-function deactivate(){cloudReady=false;currentUser=null;S={punches:[],visits:[]};$('main').style.display='none';$('auth').hidden=false;$('loginpass').value=''}
+function deactivate(){cloudReady=false;currentUser=null;currentRole='seller';S={punches:[],visits:[]};$('main').style.display='none';$('admin-dashboard').style.display='none';$('auth').hidden=false;$('loginpass').value=''}
 $('loginform').addEventListener('submit',async e=>{
  e.preventDefault();const btn=$('loginbtn');btn.disabled=true;$('authmsg').textContent='Entrando…';
  try{
