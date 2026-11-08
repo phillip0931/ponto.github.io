@@ -3,7 +3,22 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Painel administrativo | Resgatécnica</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+(function(){
+ const urls=[
+  "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2",
+  "https://unpkg.com/@supabase/supabase-js@2"
+ ];
+ function load(i){
+  if(i>=urls.length){window.__supabaseLoadError=true;return}
+  const s=document.createElement("script");s.src=urls[i];s.async=false;
+  s.onload=()=>{if(window.supabase)window.__supabaseReady=true;else load(i+1)};
+  s.onerror=()=>load(i+1);
+  document.head.appendChild(s);
+ }
+ load(0);
+})();
+</script>
 <style>
 :root{--navy:#102b46;--blue:#17466d;--orange:#f28c28;--bg:#f3f6f9;--ink:#182b3b;--muted:#647789;--line:#dce4eb;--white:#fff}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 Inter,system-ui,-apple-system,Segoe UI,sans-serif}
@@ -46,18 +61,21 @@ main{max-width:1180px;margin:26px auto;padding:0 18px 48px}.top{display:flex;jus
 </main></div>
 <script>
 const $=id=>document.getElementById(id);
-if(!window.supabase){
- $("msg").textContent="O serviço de autenticação não carregou. Atualize a página ou tente novamente em alguns instantes.";
- throw new Error("Biblioteca Supabase indisponível");
-}
 const URL="https://nafifpkbhfyakekuyvlz.supabase.co";
 const KEY="sb_publishable_K-t2c0gFpT8mB-GreCG2lw_ZLqOz_cB";
 let sb;
-try{sb=window.supabase.createClient(URL,KEY)}catch(e){
- $("msg").textContent="Não foi possível iniciar a conexão. Atualize a página e tente novamente.";
- console.error("Falha ao iniciar Supabase:",e);
- throw e;
+function initSupabase(){
+ if(!window.supabase?.createClient)return false;
+ try{
+  sb=window.supabase.createClient(URL,KEY);
+  return true;
+ }catch(e){console.error("Falha ao iniciar Supabase:",e);return false}
 }
+function showConnectionError(){
+ $("app").hidden=true;$("auth").hidden=false;
+ $("msg").textContent="Não foi possível carregar a conexão com o banco. Verifique a internet e atualize a página.";
+}
+
 let users=[],punches=[],visits=[],audits=[];
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const fmt=t=>new Date(t).toLocaleString("pt-BR",{dateStyle:"short",timeStyle:"short"});
@@ -110,6 +128,7 @@ async function start(session){
 $("login").addEventListener("submit",async e=>{
  e.preventDefault();$("loginBtn").disabled=true;$("msg").textContent="Conectando…";
  try{
+  if(!sb&&!initSupabase())throw new Error("Biblioteca de conexão ainda não carregou. Atualize a página.");
   const {data,error}=await sb.auth.signInWithPassword({email:$("email").value.trim(),password:$("password").value});
   if(error)throw error;
   if(!data.session)throw new Error("A autenticação não retornou uma sessão.");
@@ -123,6 +142,11 @@ $("refresh").onclick=load;$("seller").onchange=render;$("from").onchange=render;
 $("logout").onclick=async()=>{await sb.auth.signOut();$("app").hidden=true;$("auth").hidden=false};
 $("back").onclick=()=>location.href="./";
 document.addEventListener("click",async e=>{const b=e.target.closest("[data-photo]");if(!b)return;try{const {data,error}=await sb.storage.from("visit-photos").createSignedUrl(b.dataset.photo,90);if(error)throw error;window.open(data.signedUrl,"_blank","noopener")}catch(x){alert("Não foi possível abrir a foto: "+x.message)}});
-(async()=>{try{const {data,error}=await sb.auth.getSession();if(error)throw error;if(data.session)await start(data.session);else $("auth").hidden=false}catch(e){console.error("Falha ao restaurar sessão administrativa:",e);$("app").hidden=true;$("auth").hidden=false;$("msg").textContent="Não foi possível restaurar a sessão. Entre novamente."}})();
+(async()=>{
+ for(let i=0;i<40&&!window.supabase?.createClient;i++)await new Promise(r=>setTimeout(r,250));
+ if(!initSupabase()){showConnectionError();return}
+ try{const {data,error}=await sb.auth.getSession();if(error)throw error;if(data.session)await start(data.session);else $("auth").hidden=false}
+ catch(e){console.error("Falha ao restaurar sessão administrativa:",e);$("app").hidden=true;$("auth").hidden=false;$("msg").textContent="Não foi possível restaurar a sessão. Entre novamente."}
+})();
 </script>
 </body></html>
