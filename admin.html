@@ -20,7 +20,7 @@ main{max-width:1180px;margin:26px auto;padding:0 18px 48px}.top{display:flex;jus
 </style>
 </head>
 <body>
-<section id="auth" hidden><h1>Área administrativa</h1><p class="sub">Entre com sua conta de administrador Resgatécnica.</p>
+<section id="auth"><h1>Área administrativa</h1><p class="sub">Entre com sua conta de administrador Resgatécnica.</p>
 <form id="login"><label class="field">E-mail<input id="email" type="email" autocomplete="username" required></label><label class="field">Senha<input id="password" type="password" autocomplete="current-password" required></label><button id="loginBtn">Entrar</button><div id="msg" role="status"></div></form></section>
 <div id="app" hidden>
 <header><div class="brand">RESGATÉCNICA <small>Painel de gestão · Ponto</small></div><div><span id="who" style="margin-right:12px"></span><button class="secondary" id="back">Voltar ao ponto</button> <button id="logout">Sair</button></div></header>
@@ -96,6 +96,6 @@ $("refresh").onclick=load;$("seller").onchange=render;$("from").onchange=render;
 $("logout").onclick=async()=>{await sb.auth.signOut();$("app").hidden=true;$("auth").hidden=false};
 $("back").onclick=()=>location.href="./";
 document.addEventListener("click",async e=>{const b=e.target.closest("[data-photo]");if(!b)return;try{const {data,error}=await sb.storage.from("visit-photos").createSignedUrl(b.dataset.photo,90);if(error)throw error;window.open(data.signedUrl,"_blank","noopener")}catch(x){alert("Não foi possível abrir a foto: "+x.message)}});
-(async()=>{const {data}=await sb.auth.getSession();if(data.session)await start(data.session);else $("auth").hidden=false})();
+(async()=>{try{const {data,error}=await sb.auth.getSession();if(error)throw error;if(data.session)await start(data.session);else $("auth").hidden=false}catch(e){console.error("Falha ao restaurar sessão administrativa:",e);$("app").hidden=true;$("auth").hidden=false;$("msg").textContent="Não foi possível restaurar a sessão. Entre novamente."}})();
 </script>
 </body></html>
