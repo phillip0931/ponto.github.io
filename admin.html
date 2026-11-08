@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Painel administrativo | Resgatécnica</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{--navy:#102b46;--blue:#17466d;--orange:#f28c28;--bg:#f3f6f9;--ink:#182b3b;--muted:#647789;--line:#dce4eb;--white:#fff}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 Inter,system-ui,-apple-system,Segoe UI,sans-serif}
+header{background:var(--navy);color:#fff;padding:18px max(20px,calc((100% - 1180px)/2));display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}
+.brand{font-weight:800;letter-spacing:.2px}.brand small{display:block;font-weight:500;color:#c7d5e1;font-size:12px}
+button,select,input{font:inherit}button{border:0;border-radius:9px;padding:10px 14px;background:var(--orange);color:#172b3c;font-weight:750;cursor:pointer}button.secondary{background:#e7edf2;color:var(--navy);border:1px solid var(--line)}
+main{max-width:1180px;margin:26px auto;padding:0 18px 48px}.top{display:flex;justify-content:space-between;align-items:end;gap:16px;flex-wrap:wrap;margin-bottom:18px}h1{font-size:25px;margin:0;color:var(--navy)}.sub{color:var(--muted);margin:4px 0 0}.filters,.panel,.kpi{background:var(--white);border:1px solid var(--line);border-radius:14px}
+.filters{padding:14px;display:flex;gap:12px;align-items:end;flex-wrap:wrap;margin-bottom:18px}.field{display:grid;gap:5px;color:var(--muted);font-size:12px;font-weight:700}input,select{border:1px solid var(--line);border-radius:8px;padding:9px 10px;color:var(--ink);background:#fff;min-width:145px}
+.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:18px}.kpi{padding:16px}.kpi span{display:block;color:var(--muted);font-size:12px;font-weight:700}.kpi strong{display:block;color:var(--navy);font-size:25px;margin-top:3px}
+.columns{display:grid;grid-template-columns:1fr 1fr;gap:16px}.panel{padding:16px;min-width:0}.panel h2{font-size:16px;margin:0 0 12px;color:var(--navy)}.table-wrap{overflow:auto}table{width:100%;border-collapse:collapse;font-size:13px;white-space:nowrap}th,td{text-align:left;padding:10px 9px;border-bottom:1px solid var(--line)}th{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.04em}td small{display:block;color:var(--muted)}.empty{color:var(--muted);padding:18px 4px}.photo{width:66px;height:54px;object-fit:cover;border-radius:7px;cursor:pointer}.pill{display:inline-block;padding:3px 8px;border-radius:20px;background:#edf3f7;color:var(--blue);font-size:11px;font-weight:750}
+#auth{max-width:420px;margin:9vh auto;background:#fff;padding:26px;border:1px solid var(--line);border-radius:16px}#auth h1{margin-bottom:6px}#auth form{display:grid;gap:12px;margin-top:18px}#auth input{width:100%}#msg{color:#a33;min-height:22px}.wide{grid-column:1/-1}.audit{margin-top:16px}
+@media(max-width:800px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.columns{grid-template-columns:1fr}header{padding:15px 18px}}
+@media(max-width:420px){.grid{grid-template-columns:1fr 1fr}.kpi strong{font-size:21px}.filters>*{flex:1}.filters input,.filters select{width:100%;min-width:0}}
+</style>
+</head>
+<body>
+<section id="auth" hidden><h1>Área administrativa</h1><p class="sub">Entre com sua conta de administrador Resgatécnica.</p>
+<form id="login"><label class="field">E-mail<input id="email" type="email" autocomplete="username" required></label><label class="field">Senha<input id="password" type="password" autocomplete="current-password" required></label><button id="loginBtn">Entrar</button><div id="msg" role="status"></div></form></section>
+<div id="app" hidden>
+<header><div class="brand">RESGATÉCNICA <small>Painel de gestão · Ponto</small></div><div><span id="who" style="margin-right:12px"></span><button class="secondary" id="back">Voltar ao ponto</button> <button id="logout">Sair</button></div></header>
+<main>
+<div class="top"><div><h1>Visão geral da equipe</h1><p class="sub">Acompanhamento de jornada, visitas e registros da equipe.</p></div><span class="pill" id="updated">Atualizando dados…</span></div>
+<div class="filters">
+<label class="field">Vendedor<select id="seller"><option value="">Todos os vendedores</option></select></label>
+<label class="field">De<input id="from" type="date"></label>
+<label class="field">Até<input id="to" type="date"></label>
+<button id="refresh">Atualizar</button>
+</div>
+<div class="grid">
+<div class="kpi"><span>Vendedores cadastrados</span><strong id="kSellers">—</strong></div>
+<div class="kpi"><span>Registros de ponto</span><strong id="kPunches">—</strong></div>
+<div class="kpi"><span>Visitas no período</span><strong id="kVisits">—</strong></div>
+<div class="kpi"><span>Horas registradas</span><strong id="kHours">—</strong></div>
+</div>
+<div class="columns">
+<section class="panel"><h2>Registros de ponto</h2><div class="table-wrap"><table><thead><tr><th>Vendedor</th><th>Data e hora</th></tr></thead><tbody id="punchRows"></tbody></table></div><div id="punchEmpty" class="empty" hidden>Nenhum ponto encontrado neste período.</div></section>
+<section class="panel"><h2>Visitas realizadas</h2><div class="table-wrap"><table><thead><tr><th>Vendedor</th><th>Cliente / motivo</th><th>Chegada / saída</th><th>Foto</th></tr></thead><tbody id="visitRows"></tbody></table></div><div id="visitEmpty" class="empty" hidden>Nenhuma visita encontrada neste período.</div></section>
+<section class="panel wide audit"><h2>Auditoria de alterações administrativas</h2><div class="table-wrap"><table><thead><tr><th>Quando</th><th>Responsável</th><th>Tabela / ação</th><th>Registro</th></tr></thead><tbody id="auditRows"></tbody></table></div><div id="auditEmpty" class="empty" hidden>Nenhuma alteração administrativa registrada.</div></section>
+</div>
+</main></div>
+<script>
+const URL="https://nafifpkbhfyakekuyvlz.supabase.co";
+const KEY="sb_publishable_K-t2c0gFpT8mB-GreCG2lw_ZLqOz_cB";
+const sb=window.supabase.createClient(URL,KEY);
+const $=id=>document.getElementById(id);
+let users=[],punches=[],visits=[],audits=[];
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const fmt=t=>new Date(t).toLocaleString("pt-BR",{dateStyle:"short",timeStyle:"short"});
+const label=id=>users.find(u=>u.user_id===id)?.email||id.slice(0,8);
+function range(rows,key){const a=$("from").value,b=$("to").value;return rows.filter(x=>{const d=new Date(x[key]).toISOString().slice(0,10);return(!a||d>=a)&&(!b||d<=b)})}
+function filtered(rows,key){const id=$("seller").value;return range(rows,key).filter(x=>!id||x.user_id===id)}
+function render(){
+ const pp=filtered(punches,"punched_at"),vv=filtered(visits,"started_at");
+ $("kSellers").textContent=users.filter(u=>u.role==="seller").length;
+ $("kPunches").textContent=pp.length;$("kVisits").textContent=vv.length;
+ const grouped={};pp.forEach(x=>(grouped[x.user_id+"|"+new Date(x.punched_at).toISOString().slice(0,10)]??=[]).push(Date.parse(x.punched_at)));
+ let ms=0;Object.values(grouped).forEach(a=>{a.sort((x,y)=>x-y);for(let i=0;i+1<a.length;i+=2)ms+=a[i+1]-a[i]});
+ $("kHours").textContent=Math.floor(ms/3600000)+"h"+String(Math.floor(ms/60000)%60).padStart(2,"0");
+ $("punchRows").innerHTML=pp.slice().sort((a,b)=>b.punched_at.localeCompare(a.punched_at)).map(x=>"<tr><td>"+esc(label(x.user_id))+"</td><td>"+fmt(x.punched_at)+"</td></tr>").join("");
+ $("punchEmpty").hidden=pp.length>0;
+ $("visitRows").innerHTML=vv.slice().sort((a,b)=>b.started_at.localeCompare(a.started_at)).map(x=>"<tr><td>"+esc(label(x.user_id))+"</td><td>"+esc(x.client)+"<small>"+esc(x.reason||"")+"</small></td><td>"+fmt(x.started_at)+(x.ended_at?"<small>Saída: "+fmt(x.ended_at)+"</small>":"<small>Em andamento</small>")+"</td><td>"+(x.photo_path?"<button class='secondary' data-photo='"+esc(x.photo_path)+"'>Abrir</button>":"—")+"</td></tr>").join("");
+ $("visitEmpty").hidden=vv.length>0;
+ $("auditRows").innerHTML=audits.slice().sort((a,b)=>b.created_at.localeCompare(a.created_at)).map(x=>"<tr><td>"+fmt(x.created_at)+"</td><td>"+esc(label(x.actor_id))+"</td><td>"+esc(x.table_name)+" · "+esc(x.operation)+"</td><td>"+esc(x.record_id.slice(0,8))+"</td></tr>").join("");
+ $("auditEmpty").hidden=audits.length>0;
+ $("updated").textContent="Atualizado às "+new Date().toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"});
+}
+async function load(){
+ $("refresh").disabled=true;
+ try{
+  const [u,p,v,a]=await Promise.all([
+   sb.from("profiles").select("user_id,email,role").order("email"),
+   sb.from("punches").select("id,user_id,punched_at").order("punched_at",{ascending:false}).limit(3000),
+   sb.from("visits").select("id,user_id,client,reason,notes,started_at,ended_at,photo_path").order("started_at",{ascending:false}).limit(2000),
+   sb.from("admin_audit_logs").select("id,actor_id,table_name,record_id,operation,created_at").order("created_at",{ascending:false}).limit(200)
+  ]);
+  for(const r of [u,p,v,a])if(r.error)throw r.error;
+  users=u.data||[];punches=p.data||[];visits=v.data||[];audits=a.data||[];
+  const sel=$("seller"),old=sel.value;sel.innerHTML='<option value="">Todos os vendedores</option>'+users.map(x=>'<option value="'+esc(x.user_id)+'">'+esc(x.email||x.user_id)+'</option>').join("");sel.value=old;
+  render();
+ }catch(e){$("updated").textContent="Erro ao carregar: "+e.message;console.error(e)}
+ finally{$("refresh").disabled=false}
+}
+async function start(session){
+ const {data,error}=await sb.from("profiles").select("role").eq("user_id",session.user.id).single();
+ if(error||data?.role!=="admin"){await sb.auth.signOut();$("msg").textContent="Esta conta não possui acesso administrativo.";$("auth").hidden=false;return}
+ $("who").textContent=session.user.email||"Administrador";$("auth").hidden=true;$("app").hidden=false;await load();
+}
+$("login").addEventListener("submit",async e=>{e.preventDefault();$("loginBtn").disabled=true;$("msg").textContent="";try{const {data,error}=await sb.auth.signInWithPassword({email:$("email").value.trim(),password:$("password").value});if(error)throw error;await start(data.session)}catch(x){$("msg").textContent="Não foi possível entrar. Confira e-mail e senha."}finally{$("loginBtn").disabled=false}});
+$("refresh").onclick=load;$("seller").onchange=render;$("from").onchange=render;$("to").onchange=render;
+$("logout").onclick=async()=>{await sb.auth.signOut();$("app").hidden=true;$("auth").hidden=false};
+$("back").onclick=()=>location.href="./";
+document.addEventListener("click",async e=>{const b=e.target.closest("[data-photo]");if(!b)return;try{const {data,error}=await sb.storage.from("visit-photos").createSignedUrl(b.dataset.photo,90);if(error)throw error;window.open(data.signedUrl,"_blank","noopener")}catch(x){alert("Não foi possível abrir a foto: "+x.message)}});
+(async()=>{const {data}=await sb.auth.getSession();if(data.session)await start(data.session);else $("auth").hidden=false})();
+</script>
+</body></html>
