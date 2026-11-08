@@ -550,7 +550,7 @@ function tick(){
 }
 $('punch').onclick=()=>{S.punches.push(Date.now());save();render()};
 $('today').onclick=async e=>{const t=e.target.closest('[data-t]');if(!t)return;const v=Number(t.dataset.t),i=S.punches.indexOf(v);if(i<0)return;
- t.disabled=true;try{await saveChain;const {error}=await sb.from('punches').delete().eq('user_id',currentUser.id).eq('punched_at',new Date(v).toISOString());if(error)throw error;S.punches.splice(i,1);cloudSnapshot.punches.delete(new Date(v).toISOString());render()}catch(err){console.error(err);$('snote').textContent='Não foi possível remover o registro. Tente novamente.';t.disabled=false}
+ t.disabled=true;try{await saveChain;if(syncError)throw syncError;const {error}=await sb.from('punches').delete().eq('user_id',currentUser.id).eq('punched_at',new Date(v).toISOString());if(error)throw error;S.punches.splice(i,1);cloudSnapshot.punches.delete(new Date(v).toISOString());render()}catch(err){console.error(err);$('snote').textContent='Não foi possível remover o registro. Tente novamente.';t.disabled=false}
 };
 $('add').onclick=()=>{
   const d=$('fd').value,t=$('ft').value,m=$('msg');
