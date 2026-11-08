@@ -470,25 +470,18 @@ let cloudSnapshot={punches:new Set(),visits:new Map()};
 const K='ponto:v1';
 let S={punches:[],visits:[]};
 const save=()=>{
- if(!cloudReady||!currentUser)return;
+ if(!cloudReady||!currentUser)return Promise.resolve();
  const uid=currentUser.id;
  saveChain=saveChain.then(async()=>{
   const currentPunches=new Set(S.punches.map(t=>new Date(t).toISOString()));
   const punchRows=[...currentPunches].map(punched_at=>({user_id:uid,punched_at}));
   if(punchRows.length){const {error}=await sb.from('punches').upsert(punchRows,{onConflict:'user_id,punched_at'});if(error)throw error}
-  for(const old of cloudSnapshot.punches)if(!currentPunches.has(old)){
-   const {error}=await sb.from('punches').delete().eq('user_id',uid).eq('punched_at',old);if(error)throw error;
-  }
   const currentVisits=new Map(S.visits.map(v=>[v.id,v]));
   const visitRows=[...currentVisits.values()].map(v=>({
    id:v.id,user_id:uid,client:v.c,reason:v.m||'',notes:v.o||'',
    started_at:new Date(v.ini).toISOString(),ended_at:v.fim?new Date(v.fim).toISOString():null,photo_path:v.photo_path||null
   }));
   if(visitRows.length){const {error}=await sb.from('visits').upsert(visitRows,{onConflict:'id'});if(error)throw error}
-  for(const [oldId,oldPath] of cloudSnapshot.visits)if(!currentVisits.has(oldId)){
-   if(oldPath){const {error:e}=await sb.storage.from('visit-photos').remove([oldPath]);if(e)throw e}
-   const {error}=await sb.from('visits').delete().eq('user_id',uid).eq('id',oldId);if(error)throw error;
-  }
   cloudSnapshot={punches:currentPunches,visits:new Map([...currentVisits].map(([id,v])=>[id,v.photo_path||null]))};
  }).catch(error=>{
   console.error('Falha ao sincronizar:',error);
@@ -554,7 +547,9 @@ function tick(){
   $('fill').style.width=Math.min(100,weekly/(44*H)*100)+'%';
 }
 $('punch').onclick=()=>{S.punches.push(Date.now());save();render()};
-$('today').onclick=e=>{const t=e.target.closest('[data-t]');if(!t)return;const v=Number(t.dataset.t),i=S.punches.indexOf(v);if(i>-1){S.punches.splice(i,1);save();render()}};
+$('today').onclick=async e=>{const t=e.target.closest('[data-t]');if(!t)return;const v=Number(t.dataset.t),i=S.punches.indexOf(v);if(i<0)return;
+ t.disabled=true;try{await saveChain;const {error}=await sb.from('punches').delete().eq('user_id',currentUser.id).eq('punched_at',new Date(v).toISOString());if(error)throw error;S.punches.splice(i,1);cloudSnapshot.punches.delete(new Date(v).toISOString());render()}catch(err){console.error(err);$('snote').textContent='Não foi possível remover o registro. Tente novamente.';t.disabled=false}
+};
 $('add').onclick=()=>{
   const d=$('fd').value,t=$('ft').value,m=$('msg');
   if(!d||!t){m.textContent='Preencha a data e a hora.';return}
@@ -613,7 +608,7 @@ $('vlist').onclick=e=>{
   const im=e.target.closest('img');if(im){im.classList.toggle('big');return}
   const b=e.target.closest('[data-v]');if(!b)return;
   const i=S.visits.findIndex(x=>x.id===b.dataset.v);
-  if(i>-1){S.visits.splice(i,1);save();renderV()}
+  if(i>-1){b.disabled=true;try{await saveChain;const v=S.visits[i];if(v.photo_path){const {error}=await sb.storage.from('visit-photos').remove([v.photo_path]);if(error)throw error}const {error}=await sb.from('visits').delete().eq('user_id',currentUser.id).eq('id',v.id);if(error)throw error;S.visits.splice(i,1);cloudSnapshot.visits.delete(v.id);renderV()}catch(err){console.error(err);$('snote').textContent='Não foi possível remover a visita. Tente novamente.';b.disabled=false}}
 };
 $('vadd').onclick=async()=>{
   const m=$('vmsg'),bt=$('vadd'),c=$('vc').value.trim(),d=$('vd').value,a=$('va').value,s=$('vs').value;
