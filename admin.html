@@ -45,10 +45,19 @@ main{max-width:1180px;margin:26px auto;padding:0 18px 48px}.top{display:flex;jus
 </div>
 </main></div>
 <script>
+const $=id=>document.getElementById(id);
+if(!window.supabase){
+ $("msg").textContent="O serviço de autenticação não carregou. Atualize a página ou tente novamente em alguns instantes.";
+ throw new Error("Biblioteca Supabase indisponível");
+}
 const URL="https://nafifpkbhfyakekuyvlz.supabase.co";
 const KEY="sb_publishable_K-t2c0gFpT8mB-GreCG2lw_ZLqOz_cB";
-const sb=window.supabase.createClient(URL,KEY);
-const $=id=>document.getElementById(id);
+let sb;
+try{sb=window.supabase.createClient(URL,KEY)}catch(e){
+ $("msg").textContent="Não foi possível iniciar a conexão. Atualize a página e tente novamente.";
+ console.error("Falha ao iniciar Supabase:",e);
+ throw e;
+}
 let users=[],punches=[],visits=[],audits=[];
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const fmt=t=>new Date(t).toLocaleString("pt-BR",{dateStyle:"short",timeStyle:"short"});
@@ -87,11 +96,29 @@ async function load(){
  finally{$("refresh").disabled=false}
 }
 async function start(session){
- const {data,error}=await sb.from("profiles").select("role").eq("user_id",session.user.id).single();
- if(error||data?.role!=="admin"){await sb.auth.signOut();$("msg").textContent="Esta conta não possui acesso administrativo.";$("auth").hidden=false;return}
- $("who").textContent=session.user.email||"Administrador";$("auth").hidden=true;$("app").hidden=false;await load();
+ try{
+  const {data,error}=await sb.from("profiles").select("role").eq("user_id",session.user.id).single();
+  if(error)throw error;
+  if(data?.role!=="admin"){await sb.auth.signOut();$("msg").textContent="Esta conta não possui acesso administrativo.";$("auth").hidden=false;return}
+  $("who").textContent=session.user.email||"Administrador";$("auth").hidden=true;$("app").hidden=false;await load();
+ }catch(e){
+  console.error("Falha ao validar perfil administrativo:",e);
+  $("app").hidden=true;$("auth").hidden=false;
+  $("msg").textContent="Login aceito, mas não foi possível validar seu acesso: "+(e.message||"erro de conexão");
+ }
 }
-$("login").addEventListener("submit",async e=>{e.preventDefault();$("loginBtn").disabled=true;$("msg").textContent="";try{const {data,error}=await sb.auth.signInWithPassword({email:$("email").value.trim(),password:$("password").value});if(error)throw error;await start(data.session)}catch(x){$("msg").textContent="Não foi possível entrar. Confira e-mail e senha."}finally{$("loginBtn").disabled=false}});
+$("login").addEventListener("submit",async e=>{
+ e.preventDefault();$("loginBtn").disabled=true;$("msg").textContent="Conectando…";
+ try{
+  const {data,error}=await sb.auth.signInWithPassword({email:$("email").value.trim(),password:$("password").value});
+  if(error)throw error;
+  if(!data.session)throw new Error("A autenticação não retornou uma sessão.");
+  await start(data.session);
+ }catch(x){
+  console.error("Falha no login administrativo:",x);
+  $("msg").textContent=x.message||"Não foi possível entrar. Verifique a conexão e os dados.";
+ }finally{$("loginBtn").disabled=false}
+});
 $("refresh").onclick=load;$("seller").onchange=render;$("from").onchange=render;$("to").onchange=render;
 $("logout").onclick=async()=>{await sb.auth.signOut();$("app").hidden=true;$("auth").hidden=false};
 $("back").onclick=()=>location.href="./";
