@@ -100,7 +100,7 @@ function render(){
  const grouped={};pp.forEach(x=>(grouped[x.user_id+"|"+new Date(x.punched_at).toISOString().slice(0,10)]??=[]).push(Date.parse(x.punched_at)));
  let ms=0;Object.values(grouped).forEach(a=>{a.sort((x,y)=>x-y);for(let i=0;i+1<a.length;i+=2)ms+=a[i+1]-a[i]});
  $("kHours").textContent=Math.floor(ms/3600000)+"h"+String(Math.floor(ms/60000)%60).padStart(2,"0");
- $("punchRows").innerHTML=pp.slice().sort((a,b)=>b.punched_at.localeCompare(a.punched_at)).map(x=>"<tr><td>"+esc(label(x.user_id))+"</td><td>"+fmt(x.punched_at)+"</td><td><div class=\"actions\"><button class=\"secondary\" data-edit-punch=\""+esc(x.id)+"\">Editar</button><button class=\"danger\" data-delete-punch=\""+esc(x.id)+"\">Excluir</button></div></td></tr>").join("");
+ $("punchRows").innerHTML=pp.slice().sort((a,b)=>b.punched_at.localeCompare(a.punched_at)).map(x=>"<tr><td>"+esc(label(x.user_id))+"</td><td>"+fmt(x.punched_at)+"</td><td><div class=\"actions\"><button class=\"secondary\" data-edit-punch=\""+esc(x.id)+"\">Editar</button></div></td></tr>").join("");
  $("punchEmpty").hidden=pp.length>0;
  $("visitRows").innerHTML=vv.slice().sort((a,b)=>b.started_at.localeCompare(a.started_at)).map(x=>"<tr><td>"+esc(label(x.user_id))+"</td><td>"+esc(x.client)+"<small>"+esc(x.reason||"")+"</small></td><td>"+fmt(x.started_at)+(x.ended_at?"<small>Saída: "+fmt(x.ended_at)+"</small>":"<small>Em andamento</small>")+"</td><td>"+(x.photo_path?"<button class='secondary' data-photo='"+esc(x.photo_path)+"'>Abrir</button>":"—")+"</td></tr>").join("");
  $("visitEmpty").hidden=vv.length>0;
