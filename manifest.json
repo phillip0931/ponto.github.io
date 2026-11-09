@@ -5,7 +5,15 @@
   "name": "Ponto Resgatécnica",
   "orientation": "any",
   "scope": "/ponto.github.io/",
-  "short_name": "ponto",
+  "short_name": "Ponto",
   "start_url": "/ponto.github.io/",
-  "theme_color": "#ffffff"
+  "theme_color": "#14233b",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
 }
