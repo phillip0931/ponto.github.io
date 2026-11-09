@@ -45,9 +45,9 @@ main{max-width:1180px;margin:26px auto;padding:0 18px 48px}.top{display:flex;jus
 </div>
 </main></div>
 <script>
-const URL="https://nafifpkbhfyakekuyvlz.supabase.co";
+const SUPABASE_URL="https://nafifpkbhfyakekuyvlz.supabase.co";
 const KEY="sb_publishable_K-t2c0gFpT8mB-GreCG2lw_ZLqOz_cB";
-const sb=window.supabase.createClient(URL,KEY);
+const sb=window.supabase.createClient(SUPABASE_URL,KEY);
 const $=id=>document.getElementById(id);
 let users=[],punches=[],visits=[],audits=[];
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
