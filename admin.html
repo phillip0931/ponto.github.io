@@ -39,7 +39,7 @@ main{max-width:1180px;margin:26px auto;padding:0 18px 48px}.top{display:flex;jus
 .filters{padding:14px;display:flex;gap:12px;align-items:end;flex-wrap:wrap;margin-bottom:18px}.field{display:grid;gap:5px;color:var(--muted);font-size:12px;font-weight:700}input,select{border:1px solid var(--line);border-radius:8px;padding:9px 10px;color:var(--ink);background:#fff;min-width:145px}
 .grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:18px}.kpi{padding:16px}.kpi span{display:block;color:var(--muted);font-size:12px;font-weight:700}.kpi strong{display:block;color:var(--navy);font-size:25px;margin-top:3px}
 .columns{display:grid;grid-template-columns:1fr 1fr;gap:16px}.panel{padding:16px;min-width:0}.panel h2{font-size:16px;margin:0 0 12px;color:var(--navy)}.table-wrap{overflow:auto}table{width:100%;border-collapse:collapse;font-size:13px;white-space:nowrap}th,td{text-align:left;padding:10px 9px;border-bottom:1px solid var(--line)}th{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.04em}td small{display:block;color:var(--muted)}.empty{color:var(--muted);padding:18px 4px}.photo{width:66px;height:54px;object-fit:cover;border-radius:7px;cursor:pointer}.pill{display:inline-block;padding:3px 8px;border-radius:20px;background:#edf3f7;color:var(--blue);font-size:11px;font-weight:750}
-#auth{max-width:420px;margin:9vh auto;background:#fff;padding:26px;border:1px solid var(--line);border-radius:16px}#auth h1{margin-bottom:6px}#auth form{display:grid;gap:12px;margin-top:18px}#auth input{width:100%}#msg{color:#a33;min-height:22px}.wide{grid-column:1/-1}.audit{margin-top:16px}
+#auth{max-width:420px;margin:9vh auto;background:#fff;padding:26px;border:1px solid var(--line);border-radius:16px}#auth h1{margin-bottom:6px}#auth form{display:grid;gap:12px;margin-top:18px}#auth input{width:100%}#msg{color:#a33;min-height:22px}.wide{grid-column:1/-1}.audit{margin-top:16px}.section-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}.section-head h2{margin:0}.actions{display:flex;gap:6px}.actions button{padding:6px 9px;font-size:12px}.danger{background:#fde9e7;color:#9f2d24;border:1px solid #f4c7c2}.modal-backdrop{position:fixed;inset:0;background:#102b4680;display:grid;place-items:center;padding:18px;z-index:20}.modal{width:min(440px,100%);background:#fff;border-radius:16px;padding:22px;box-shadow:0 18px 60px #102b4633}.modal h2{margin:0 0 16px;color:var(--navy)}.modal form{display:grid;gap:12px}.modal input,.modal select{width:100%}.modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:6px}
 @media(max-width:800px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.columns{grid-template-columns:1fr}header{padding:15px 18px}}
 @media(max-width:420px){.grid{grid-template-columns:1fr 1fr}.kpi strong{font-size:21px}.filters>*{flex:1}.filters input,.filters select{width:100%;min-width:0}}
 </style>
@@ -64,11 +64,12 @@ main{max-width:1180px;margin:26px auto;padding:0 18px 48px}.top{display:flex;jus
 <div class="kpi"><span>Horas registradas</span><strong id="kHours">—</strong></div>
 </div>
 <div class="columns">
-<section class="panel"><h2>Registros de ponto</h2><div class="table-wrap"><table><thead><tr><th>Vendedor</th><th>Data e hora</th></tr></thead><tbody id="punchRows"></tbody></table></div><div id="punchEmpty" class="empty" hidden>Nenhum ponto encontrado neste período.</div></section>
+<section class="panel"><div class="section-head"><h2>Registros de ponto</h2><button id="addPunch">+ Adicionar ponto</button></div><div class="table-wrap"><table><thead><tr><th>Vendedor</th><th>Data e hora</th><th>Ações</th></tr></thead><tbody id="punchRows"></tbody></table></div><div id="punchEmpty" class="empty" hidden>Nenhum ponto encontrado neste período.</div></section>
 <section class="panel"><h2>Visitas realizadas</h2><div class="table-wrap"><table><thead><tr><th>Vendedor</th><th>Cliente / motivo</th><th>Chegada / saída</th><th>Foto</th></tr></thead><tbody id="visitRows"></tbody></table></div><div id="visitEmpty" class="empty" hidden>Nenhuma visita encontrada neste período.</div></section>
 <section class="panel wide audit"><h2>Auditoria de alterações administrativas</h2><div class="table-wrap"><table><thead><tr><th>Quando</th><th>Responsável</th><th>Tabela / ação</th><th>Registro</th></tr></thead><tbody id="auditRows"></tbody></table></div><div id="auditEmpty" class="empty" hidden>Nenhuma alteração administrativa registrada.</div></section>
 </div>
 </main></div>
+<div id="punchModal" class="modal-backdrop" hidden><section class="modal" role="dialog" aria-modal="true" aria-labelledby="punchModalTitle"><h2 id="punchModalTitle">Adicionar ponto</h2><form id="punchForm"><input id="punchId" type="hidden"><label class="field">Vendedor<select id="punchSeller" required></select></label><label class="field">Data e horário<input id="punchDateTime" type="datetime-local" required></label><div class="modal-actions"><button type="button" class="secondary" id="cancelPunch">Cancelar</button><button type="submit" id="savePunch">Salvar ponto</button></div><div id="punchMsg" role="status"></div></form></section></div>
 <script>
 const $=id=>document.getElementById(id);
 const SUPABASE_URL="https://nafifpkbhfyakekuyvlz.supabase.co";
@@ -99,7 +100,7 @@ function render(){
  const grouped={};pp.forEach(x=>(grouped[x.user_id+"|"+new Date(x.punched_at).toISOString().slice(0,10)]??=[]).push(Date.parse(x.punched_at)));
  let ms=0;Object.values(grouped).forEach(a=>{a.sort((x,y)=>x-y);for(let i=0;i+1<a.length;i+=2)ms+=a[i+1]-a[i]});
  $("kHours").textContent=Math.floor(ms/3600000)+"h"+String(Math.floor(ms/60000)%60).padStart(2,"0");
- $("punchRows").innerHTML=pp.slice().sort((a,b)=>b.punched_at.localeCompare(a.punched_at)).map(x=>"<tr><td>"+esc(label(x.user_id))+"</td><td>"+fmt(x.punched_at)+"</td></tr>").join("");
+ $("punchRows").innerHTML=pp.slice().sort((a,b)=>b.punched_at.localeCompare(a.punched_at)).map(x=>"<tr><td>"+esc(label(x.user_id))+"</td><td>"+fmt(x.punched_at)+"</td><td><div class=\"actions\"><button class=\"secondary\" data-edit-punch=\""+esc(x.id)+"\">Editar</button><button class=\"danger\" data-delete-punch=\""+esc(x.id)+"\">Excluir</button></div></td></tr>").join("");
  $("punchEmpty").hidden=pp.length>0;
  $("visitRows").innerHTML=vv.slice().sort((a,b)=>b.started_at.localeCompare(a.started_at)).map(x=>"<tr><td>"+esc(label(x.user_id))+"</td><td>"+esc(x.client)+"<small>"+esc(x.reason||"")+"</small></td><td>"+fmt(x.started_at)+(x.ended_at?"<small>Saída: "+fmt(x.ended_at)+"</small>":"<small>Em andamento</small>")+"</td><td>"+(x.photo_path?"<button class='secondary' data-photo='"+esc(x.photo_path)+"'>Abrir</button>":"—")+"</td></tr>").join("");
  $("visitEmpty").hidden=vv.length>0;
@@ -123,6 +124,51 @@ async function load(){
  }catch(e){$("updated").textContent="Erro ao carregar: "+e.message;console.error(e)}
  finally{$("refresh").disabled=false}
 }
+
+function localDateTimeValue(value){
+ const d=new Date(value);const pad=n=>String(n).padStart(2,"0");
+ return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate())+"T"+pad(d.getHours())+":"+pad(d.getMinutes());
+}
+function openPunchModal(punch){
+ const sel=$("punchSeller");sel.innerHTML=users.map(u=>'<option value="'+esc(u.user_id)+'">'+esc(u.email||u.user_id)+'</option>').join("");
+ $("punchId").value=punch?.id||"";
+ $("punchSeller").value=punch?.user_id||users.find(u=>u.role==="seller")?.user_id||"";
+ $("punchDateTime").value=punch?localDateTimeValue(punch.punched_at):localDateTimeValue(new Date());
+ $("punchModalTitle").textContent=punch?"Editar registro de ponto":"Adicionar ponto";
+ $("punchMsg").textContent="";$("punchModal").hidden=false;
+}
+function closePunchModal(){$("punchModal").hidden=true}
+$("addPunch").onclick=()=>openPunchModal(null);
+$("cancelPunch").onclick=closePunchModal;
+$("punchModal").addEventListener("click",e=>{if(e.target===$("punchModal"))closePunchModal()});
+$("punchForm").addEventListener("submit",async e=>{
+ e.preventDefault();$("savePunch").disabled=true;$("punchMsg").textContent="Salvando…";
+ try{
+  const id=$("punchId").value;
+  const payload={user_id:$("punchSeller").value,punched_at:new Date($("punchDateTime").value).toISOString()};
+  if(!payload.user_id||!payload.punched_at||!Number.isFinite(Date.parse(payload.punched_at)))throw new Error("Confira o vendedor, a data e o horário.");
+  const result=id
+   ? await sb.from("punches").update({punched_at:payload.punched_at}).eq("id",id)
+   : await sb.from("punches").insert(payload);
+  if(result.error)throw result.error;
+  closePunchModal();await load();
+ }catch(err){$("punchMsg").textContent="Não foi possível salvar: "+(err.message||"erro inesperado");console.error(err)}
+ finally{$("savePunch").disabled=false}
+});
+document.addEventListener("click",async e=>{
+ const edit=e.target.closest("[data-edit-punch]");
+ const del=e.target.closest("[data-delete-punch]");
+ if(edit){const p=punches.find(x=>x.id===edit.dataset.editPunch);if(p)openPunchModal(p);return}
+ if(del){
+  const p=punches.find(x=>x.id===del.dataset.deletePunch);if(!p)return;
+  if(!confirm("Excluir o ponto de "+label(p.user_id)+" em "+fmt(p.punched_at)+"? Essa ação ficará registrada na auditoria."))return;
+  del.disabled=true;
+  try{const {error}=await sb.from("punches").delete().eq("id",p.id);if(error)throw error;await load()}
+  catch(err){alert("Não foi possível excluir o ponto: "+err.message);console.error(err)}
+  finally{del.disabled=false}
+ }
+});
+
 async function start(session){
  try{
   const {data,error}=await sb.from("profiles").select("role").eq("user_id",session.user.id).single();
