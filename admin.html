@@ -71,13 +71,13 @@ main{max-width:1180px;margin:26px auto;padding:0 18px 48px}.top{display:flex;jus
 </main></div>
 <script>
 const $=id=>document.getElementById(id);
-const URL="https://nafifpkbhfyakekuyvlz.supabase.co";
+const SUPABASE_URL="https://nafifpkbhfyakekuyvlz.supabase.co";
 const KEY="sb_publishable_K-t2c0gFpT8mB-GreCG2lw_ZLqOz_cB";
 let sb;
 function initSupabase(){
  if(!window.supabase?.createClient)return false;
  try{
-  sb=window.supabase.createClient(URL,KEY);
+  sb=window.supabase.createClient(SUPABASE_URL,KEY);
   return true;
  }catch(e){console.error("Falha ao iniciar Supabase:",e);return false}
 }
