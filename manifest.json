@@ -1,0 +1,11 @@
+{
+  "background_color": "#ffffff",
+  "dir": "ltr",
+  "display": "standalone",
+  "name": "Ponto Resgatécnica",
+  "orientation": "any",
+  "scope": "/ponto.github.io/",
+  "short_name": "ponto",
+  "start_url": "/ponto.github.io/",
+  "theme_color": "#ffffff"
+}
